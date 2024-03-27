@@ -23,7 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'camera_node = harvester.camera_node:main'
+            'camera_node = harvester.camera_node:main',
+            'camera_array = harvester.camera_array:main'
         ],
     },
 )

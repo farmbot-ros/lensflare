@@ -9,7 +9,7 @@ def generate_launch_description():
     node = Node(
         package='harvester',
         executable='camera_node',
-        name='camera_node_11a',
+        name='camera_node1',
         parameters=[
             {'camera_name':'11a'}
         ],
@@ -20,7 +20,7 @@ def generate_launch_description():
     node2 = Node(
         package='harvester',
         executable='camera_node',
-        name='camera_node_13',
+        name='camera_node2',
         parameters=[
             {'camera_name':'13'},
             {'scan_cameras':False}
