@@ -2,10 +2,8 @@ from arena_api.system import system
 from arena_api.buffer import *
 import ctypes
 import numpy as np
-import cv2
 from cv_bridge import CvBridge
 import time
-import threading
 
 import rclpy
 from rclpy.node import Node
@@ -47,22 +45,19 @@ class CameraNode(Node):
         self.name = name
         self.device_infos = device_infos
         self.bridge = CvBridge()
-        self.lock = threading.Lock()
         super().__init__(f'camera_{self.name}_node')
         self.camera_pub = self.create_publisher(Image,f'oxbo_{self.name}',10)
         self.timer = self.create_timer(timer, self.timer_callback)
         self.buffer_bytes_per_pixel = None
 
 
-    def create_devices_with_tries(self):
+    def create_camera(self):
         tries = 0
         tries_max = 6
         sleep_time_secs = 10
         result_dict = next((d for d in self.device_infos if d.get("mac") == self.mac), None)
-        device_info = {'mac': self.mac}
-        while tries < tries_max:  # Wait for device for 60 seconds
-            with self.lock:
-                devices = system.create_device(result_dict)
+        while tries < tries_max: 
+            devices = system.create_device(result_dict)
             if not devices:
                 print(
                     f'Try {tries+1} of {tries_max}: waiting for {sleep_time_secs} '
@@ -76,11 +71,10 @@ class CameraNode(Node):
                 print(f'Created camera {self.name}')
                 return devices
         else:
-            raise Exception(f'Camera {self.name} NOT found! Please connect camera {self.name} and run '
-                            f'the example again.')
+            raise Exception(f'Camera {self.name} NOT found! Please connect camera {self.name} and run the example again.')
 
     
-    def setup_camera_settings(self, device):
+    def setup_camera(self, device):
         nodemap = device.nodemap
         nodes = nodemap.get_node(['Width', 'Height', 'PixelFormat', 'DeviceStreamChannelPacketSize'])
         nodes['Width'].value = nodes['Width'].max
@@ -96,17 +90,17 @@ class CameraNode(Node):
 
 
 
-    def initialize_cameras(self):
-        devices = self.create_devices_with_tries()
+    def initialize_camera(self):
+        devices = self.create_camera()
         self.device = devices[0]
         if self.device is None: exit()
         self.num_channels = 3
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.setup_camera_settings(self.device)
+        self.setup_camera(self.device)
         self.device.start_stream(500)
 
-    def stop_cameras(self):
+    def stop_camera(self):
         self.device.stop_stream()
         system.destroy_device(self.device)
 
@@ -152,11 +146,11 @@ def main(args=None):
 
     try:
         camera_11a_node = CameraNode('11a','1c:0f:af:08:66:81', 0.001, device_infos)
-        camera_11a_node.initialize_cameras()
+        camera_11a_node.initialize_camera()
         camera_11b_node = CameraNode('11b','1c:0f:af:08:65:fe', 0.001, device_infos)
-        camera_11b_node.initialize_cameras()
+        camera_11b_node.initialize_camera()
         camera_13_node = CameraNode('13','1c:0f:af:08:49:d9', 0.001, device_infos)
-        camera_13_node.initialize_cameras()
+        camera_13_node.initialize_camera()
 
         executor = MultiThreadedExecutor(num_threads=3)
         executor.add_node(camera_11a_node)
@@ -171,9 +165,9 @@ def main(args=None):
         print(f"An error occurred: {str(e)}")
 
     finally:
-        camera_11a_node.stop_cameras()
-        camera_11b_node.stop_cameras()
-        camera_13_node.stop_cameras()
+        camera_11a_node.stop_camera()
+        camera_11b_node.stop_camera()
+        camera_13_node.stop_camera()
         rclpy.shutdown()
 
 
