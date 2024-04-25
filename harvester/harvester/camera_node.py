@@ -5,6 +5,7 @@ import numpy as np
 from cv_bridge import CvBridge
 import time
 from harvester_interfaces.msg import CameraDevice, CameraDeviceArray
+from ament_index_python.packages import get_package_share_directory
 
 import rclpy
 from rclpy.node import Node
@@ -78,6 +79,8 @@ class CameraNode(Node):
         self.timer = self.create_timer(timer, self.timer_callback)
         self.buffer_bytes_per_pixel = None
         self.time_now = 0
+        self.config_dir = get_package_share_directory(f'harvester') + '/configs/'
+
 
 
     def create_camera(self):
@@ -100,7 +103,8 @@ class CameraNode(Node):
 
     def setup_camera_from_file(self, device):
         self.get_logger().info(f"Setting up camera {self.name}, from file.")
-        FILE_NAME = '/home/bresilla/ROS_OXBO/src/harvester/configs/' + self.name + '.txt'
+        FILE_NAME = self.config_dir + self.name + '.txt'
+        print(f"Reading from file: {FILE_NAME}")
         device.nodemap.read_streamable_node_values_from(FILE_NAME)
 
     def setup_camera(self, device):
@@ -128,8 +132,8 @@ class CameraNode(Node):
         self.num_channels = 3
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.setup_camera(self.device)
-        # self.setup_camera_from_file(self.device)
+        # self.setup_camera(self.device)
+        self.setup_camera_from_file(self.device)
         self.device.start_stream(500)
 
     def stop_camera(self):
