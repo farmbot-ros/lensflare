@@ -1,8 +1,6 @@
 from setuptools import find_packages, setup
-import os
-from glob import glob
 
-package_name = 'harvester'
+package_name = 'yolo8_inference'
 
 setup(
     name=package_name,
@@ -12,20 +10,18 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='bresilla',
-    maintainer_email='trim.bresilla@gmail.com',
+    maintainer_email='anouk.leunissen@wur.nl',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'camera_node = harvester.camera_node:main',
-            'camera_array = harvester.camera_array:main',
-            'image_saver = harvester.image_saver:main',
+            'yolo8_inference = yolo8_inference.yolo8_inference:main',
+            'yolo8_inference2 = yolo8_inference.yolo8_inference2:main'
         ],
     },
 )
