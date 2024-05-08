@@ -5,6 +5,11 @@ import numpy as np
 from cv_bridge import CvBridge
 import time
 from harvester_interfaces.msg import CameraDevice, CameraDeviceArray
+from ament_index_python.packages import get_package_share_directory
+
+import socket
+import time
+import json
 
 import rclpy
 from rclpy.node import Node
@@ -66,9 +71,43 @@ BY_NAME = {
     "11b":  [30853686650366, 3, 7],   #1c:0f:af:08:65:fe
 }
 
+class LightController:
+    def __init__(self, udp_port=6512):
+        self.udp_port = udp_port
+
+    def set_parameter_value(self, udp_ip, parameter_name, value):
+        if not parameter_name: raise ValueError("Parameter name cannot be empty.")
+        message = json.dumps({"jsonrpc": "2.0", "method": "setParameter", "params": {"Name": parameter_name, "Value": value}, "id": 15})
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            try:
+                sock.sendto(message.encode("utf-8"), (udp_ip, self.udp_port))
+                data, server_address = sock.recvfrom(self.udp_port)
+                # return "param changed"
+                # reply_string = data.decode("utf-8")
+                # return reply_string
+            except socket.error as e:
+                print(f"Socket error: {e}")
+                # return None
+
+    def duty(self, udp_ip, port_nr, value):
+        if not isinstance(port_nr, int) or port_nr < 1 or port_nr > 8: 
+            raise ValueError("Port number must be an integer between 1 and 8.")
+        if not isinstance(value, int) or value < 0 or value > 255: 
+            raise ValueError("Value must be an integer between 0 and 255.")
+        parameter_name = f"Port {port_nr} Scene Duty"
+        return self.set_parameter_value(udp_ip, parameter_name, value)
+    
+    def pulse(self, udp_ip, port_nr):
+        if not isinstance(port_nr, int) or port_nr < 1 or port_nr > 8:
+            raise ValueError("Port number must be an integer between 1 and 4.")
+        
+        parameter_name = f"Send pulse port {port_nr}"
+        return self.set_parameter_value(udp_ip, parameter_name, True)
+
+
 
 class CameraNode(Node):
-    def __init__(self, name, mac, timer, device_infos):
+    def __init__(self, name, mac, timer, device_infos, lights=False):
         self.mac = mac
         self.name = name
         self.device_infos = device_infos
@@ -78,6 +117,8 @@ class CameraNode(Node):
         self.timer = self.create_timer(timer, self.timer_callback)
         self.buffer_bytes_per_pixel = None
         self.time_now = 0
+        self.config_dir = get_package_share_directory(f'harvester') + '/configs/'
+        self.lights = LightController() if lights else None
 
 
     def create_camera(self):
@@ -100,7 +141,8 @@ class CameraNode(Node):
 
     def setup_camera_from_file(self, device):
         self.get_logger().info(f"Setting up camera {self.name}, from file.")
-        FILE_NAME = '/home/bresilla/ROS_OXBO/src/harvester/configs/' + self.name + '.txt'
+        FILE_NAME = self.config_dir + self.name + '.txt'
+        print(f"Reading from file: {FILE_NAME}")
         device.nodemap.read_streamable_node_values_from(FILE_NAME)
 
     def setup_camera(self, device):
@@ -128,8 +170,8 @@ class CameraNode(Node):
         self.num_channels = 3
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        self.setup_camera(self.device)
-        # self.setup_camera_from_file(self.device)
+        # self.setup_camera(self.device)
+        self.setup_camera_from_file(self.device)
         self.device.start_stream(500)
 
     def stop_camera(self):
@@ -138,6 +180,9 @@ class CameraNode(Node):
 
     
     def timer_callback(self):
+        if self.lights is not None:
+            self.lights.pulse(BY_MAC[self.mac][0], BY_MAC[self.mac][1])
+            time.sleep(0.00001)
         buffer = self.device.get_buffer()
         if self.buffer_bytes_per_pixel is None:
             self.image_width = buffer.width
@@ -191,9 +236,9 @@ def main(args=None):
     device_infos = system.device_infos
 
     try:
-        camera_11a_node = CameraNode('11a','1c:0f:af:08:66:81', 0.001, device_infos)
+        camera_11a_node = CameraNode('11a','1c:0f:af:08:66:81', 0.001, device_infos, lights=False)
         camera_11a_node.initialize_camera()
-        camera_11b_node = CameraNode('11b','1c:0f:af:08:65:fe', 0.001, device_infos)
+        camera_11b_node = CameraNode('11b','1c:0f:af:08:65:fe', 0.001, device_infos, lights=False)
         camera_11b_node.initialize_camera()
         # camera_13_node = CameraNode('13','1c:0f:af:08:49:d9', 0.001, device_infos)
         # camera_13_node.initialize_camera()

@@ -8,33 +8,27 @@ from rclpy.executors import MultiThreadedExecutor
 
 
 class ImageSubscriber(Node):
-    def __init__(self, topic_name, base_folder, timer_period=1.0):
-        super().__init__('image_subscriber')
-        self.the_image = None
-        self.subscription = self.create_subscription(Image, topic_name, self.image_callback, 10)
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.subscription  # prevent unused variable warning
+    def __init__(self, base_folder):
+        super().__init__('image_saver')
+        
+        cameras = ["7a", "7b", "7c", "7d", "7e", "9a", "9b", "9c", "9d", "9e", "1", "3", "4", "10", "11a", "11b", "12", "13"]
+        for camera in cameras:
+            print(camera)
+            self.create_subscription(Image, f"save_{camera}", lambda msg: self.image_callback(msg, camera), 10)
+
         self.bridge = CvBridge()
-        self.base_folder = base_folder + "/" + self.returns_year_month_day_as_string() + "/" + topic_name
-        self.create_folder_if_not_exists(self.base_folder)
-        # print(self.returns_year_month_day_as_string())
+        self.base_folder = base_folder
 
-    def image_callback(self, msg):
-        try:
-            self.the_image = msg
-        except Exception as e:
-            self.get_logger().error("Error converting ROS Image to OpenCV image: %s" % str(e))
-            return
-
-    def timer_callback(self):
-        if self.the_image is None: return
-        converted_image = self.bridge.imgmsg_to_cv2(self.the_image, "passthrough")
-        timestamp  = self.the_image.header.stamp
+    def image_callback(self, msg, camera_name):
+        save_folder = self.base_folder + "/" + self.returns_year_month_day_as_string() + "/" + camera_name
+        self.create_folder_if_not_exists(save_folder)
+        converted_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
+        timestamp  = msg.header.stamp
         # print(f"Received image with timestamp {timestamp}")
         timestamp = str(timestamp.sec) + str(timestamp.nanosec)
         file_name = os.path.join(self.base_folder, f"{timestamp}.jpg")
         cv2.imwrite(file_name, converted_image)
-        self.get_logger().info(f"Saved image to {file_name}")
+        self.get_logger().info(f"Saved image to {file_name}\n")
 
     def returns_year_month_day_as_string(self):
         import datetime
@@ -45,40 +39,16 @@ class ImageSubscriber(Node):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-# def main():
-#     rclpy.init()
-#     topic_name = 'oxbo_test'
-#     base_folder = '/mnt/data'
-#     node = ImageSubscriber(topic_name, base_folder)
-#     try:
-#         rclpy.spin(node)
-#     except KeyboardInterrupt:
-#         pass
-#     node.destroy_node()
-#     rclpy.shutdown()
-
-def main(args=None):
+def main():
     rclpy.init()
-    print('Hi from saver.')
-    base_folder = '/mnt/data'
-    timer_period = 60.0
+    base_folder = '/home/bresilla/images'
+    node = ImageSubscriber(base_folder)
     try:
-        camera_11a_node = ImageSubscriber('oxbo_11a', base_folder, timer_period)
-        camera_11b_node = ImageSubscriber('oxbo_11b', base_folder, timer_period)
-
-        executor = MultiThreadedExecutor(num_threads=4)
-        executor.add_node(camera_11a_node)
-        executor.add_node(camera_11b_node)
-        try:
-            executor.spin()
-        finally:
-            executor.shutdown()
-
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-
-    finally:
-        rclpy.shutdown()
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    node.destroy_node()
+    rclpy.shutdown()
 
 
 if __name__ == '__main__':

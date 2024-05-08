@@ -15,7 +15,6 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import Image
-from std_msgs.msg import Int16
 
 
 
@@ -84,8 +83,7 @@ class LightController:
                 sock.sendto(message.encode("utf-8"), (udp_ip, self.udp_port))
                 data, server_address = sock.recvfrom(self.udp_port)
                 # return "param changed"
-                reply_string = data.decode("utf-8")
-                print(f"Commmand sent, and got reply: {reply_string}")
+                # reply_string = data.decode("utf-8")
                 # return reply_string
             except socket.error as e:
                 print(f"Socket error: {e}")
@@ -108,16 +106,12 @@ class LightController:
 
 
 
-class CameraNode(Node):
-    def __init__(self, name, mac, device_infos, lights=False):
+class CameraNode():
+    def __init__(self, name, mac, timer, device_infos, lights=False):
         self.mac = mac
         self.name = name
         self.device_infos = device_infos
         self.bridge = CvBridge()
-        super().__init__(f'camera_{self.name}_node')
-        self.save_pub = self.create_publisher(Image, f'save_{self.name}', 10)
-        self.view_pub = self.create_publisher(Image, f'view_{self.name}', 10)
-        self.camera_trigger = self.create_subscription(Int16, f'trigger_{self.name}', self.callback, 10)
         self.buffer_bytes_per_pixel = None
         self.time_now = 0
         self.config_dir = get_package_share_directory(f'harvester') + '/configs/'
@@ -147,6 +141,7 @@ class CameraNode(Node):
         FILE_NAME = self.config_dir + self.name + '.txt'
         print(f"Reading from file: {FILE_NAME}")
         device.nodemap.read_streamable_node_values_from(FILE_NAME)
+
 
     def setup_camera(self, device):
         nodemap = device.nodemap
@@ -182,7 +177,7 @@ class CameraNode(Node):
         system.destroy_device(self.device)
 
     
-    def callback(self, msg):
+    def capture_frame(self):
         if self.lights is not None:
             self.lights.pulse(BY_MAC[self.mac][0], BY_MAC[self.mac][1])
             time.sleep(0.00001)
@@ -197,60 +192,34 @@ class CameraNode(Node):
         image_msg = self.bridge.cv2_to_imgmsg(npndarray) 
         # image_msg = self.bridge.cv2_to_compressed_imgmsg(npndarray)
         image_msg.header.stamp = self.get_clock().now().to_msg()
-        if msg.data == 1:
-            self.save_pub.publish(image_msg)
-        elif msg.data == 2:
-            self.view_pub.publish(image_msg)
+        self.camera_pub.publish(image_msg)
         timedf = time.time() - self.time_now
         print(f"Time difference: {timedf}")
         self.time_now = time.time()
         self.device.requeue_buffer(buffer)
 
 
+cameras = ["7a", "7b", "7c", "7d", "7e", "9a", "9b", "9c", "9d", "9e", "1", "3", "4", "10", "12", "13"]
+
+class AllCameras(Node):
+    def __init__(self, timer):
+        super().__init__('camera_array_node')
+        self.timer = self.create_timer(timer, self.timer_callback)
+        self.device_infos = system.device_infos
+        self.camera_nodes = []
+
+        for camera in cameras:
+            camera_node = CameraNode(camera, BY_NAME[camera][3], 0, self.device_infos, lights=True)
+            camera_node.initialize_camera()
+            self.camera_nodes.append(camera_node)
+        
 
 
 def main(args=None):
-    rclpy.init()
-    print('... I GOT TO GO HARVEST ...')
-    # check for available cameras
-    device_infos = system.device_infos
-
-    device_infos_no_dup = []
-
-    for device in device_infos:
-        if device not in device_infos_no_dup:
-            device_infos_no_dup.append(device)
-
-    cam_array = []
-    num_threads = len(device_infos_no_dup)
-    executor = MultiThreadedExecutor(num_threads=num_threads)
-
-    for camera in device_infos_no_dup:
-        mac = camera["mac"]
-        hex_mac = int(mac.replace(":", ""), 16)
-        try:
-            camera_node = CameraNode(BY_MAC[hex_mac][2], mac, device_infos_no_dup, lights=False)
-            camera_node.initialize_camera()
-            cam_array.append(camera_node)
-            try:
-                executor.add_node(camera_node)
-            except Exception as e:
-                print(f"An error occurred: {str(e)}")
-
-        except Exception as e:
-            print(f"An error occurred: {str(e)}")
-    try:
-        executor.spin()
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-    finally:
-        for camera in cam_array:
-            camera.stop_camera()
-            executor.remove_node(camera)
-        executor.shutdown()
-        rclpy.shutdown()
-
-
+    rclpy.init(args=args)
+    caleras = AllCameras(1)
+    rclpy.spin(caleras)
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
