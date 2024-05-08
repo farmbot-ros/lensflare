@@ -54,7 +54,7 @@ class LightController:
 
 
 class CameraNode(Node):
-    def __init__(self, name, lights=False, destroy_if_none=False):
+    def __init__(self, name, lights=False):
         self.name = name
         self.device_infos = []
         self.device_len = 0
@@ -69,7 +69,6 @@ class CameraNode(Node):
         self.timer_initializer = self.create_timer(1, self.initialize_camera)
         self.buffer_bytes_per_pixel = None
         self.is_initialized = False
-        self.destroy_if_none = destroy_if_none
         self.time_now = 0
         self.config_dir = get_package_share_directory(f'harvester') + '/configs/'
         self.lights = LightController() if lights else None
@@ -136,7 +135,7 @@ class CameraNode(Node):
         
     def initialize_camera(self):
         while self.cam_info is None:
-            self.get_logger().info(f"Camera {self.name} not initialized yet.")
+            # self.get_logger().info(f"Camera {self.name} not initialized yet.")
             return
         result_dict = next((d for d in self.device_infos if d.get("mac") == self.cam_info.mac), None)
         devices = system.create_device(result_dict)
