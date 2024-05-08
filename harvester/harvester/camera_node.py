@@ -21,9 +21,9 @@ from std_msgs.msg import Int16
 
 IP_LIGHT = {
       0 : None,
-      1 : "192.168.1.7", # 7 RIGHT     70:B3:D5:DD:90:FD
-      3 : "192.168.1.8", # - CENTER    70:B3:D5:DD:90:EF
-      2 : "192.168.1.9", # 9 LEFT      70:B3:D5:DD:90:ED
+      1 : "192.168.2.251", # 7 RIGHT     70:B3:D5:DD:90:FD
+      3 : "192.168.2.252", # - CENTER    70:B3:D5:DD:90:EF
+      2 : "192.168.2.253", # 9 LEFT      70:B3:D5:DD:90:ED
 }
 
 GAIN = 20
@@ -49,27 +49,6 @@ BY_MAC = {
     30853686646406: [IP_LIGHT[3],   3,   "10",     867.0,  30],
     30853686650497: [IP_LIGHT[3],   7,   "11a",    498.0,  15],
     30853686650366: [IP_LIGHT[3],   7,   "11b",    498.0,  15],
-}
-
-BY_NAME = { 
-    "9b":   [30853686642969, 2, 7, "1c:0f:af:08:49:19"],
-    "9a":   [30853686643065, 2, 1, "1c:0f:af:08:49:79"],
-    "9c":   [30853686646563, 2, 2, "1c:0f:af:08:57:23"],
-    "9d":   [30853686653149, 2, 5, "1c:0f:af:08:70:dd"],
-    "9e":   [30853686643056, 2, 6, "1c:0f:af:08:49:70"],
-    "7a":   [30853686646554, 1, 6, "1c:0f:af:08:57:1a"],
-    "7b":   [30853686652294, 1, 1, "1c:0f:af:08:6d:86"],
-    "7c":   [30853686445113, 1, 5, "1c:0f:af:05:44:39"],
-    "7d":   [30853686646528, 1, 2, "1c:0f:af:08:57:00"],
-    "7e":   [30853686653140, 1, 3, "1c:0f:af:08:70:d4"],
-    "1":    [30853686643187, 3, 3, "1c:0f:af:08:49:f3"],
-    "4":    [30853686650340, 3, 6, "1c:0f:af:08:65:e4"],
-    "3":    [30853686646397, 3, 5, "1c:0f:af:08:56:7d"],
-    "13":   [30853686643161, 3, 2, "1c:0f:af:08:49:d9"],
-    "12":   [30853686643152, 3, 1, "1c:0f:af:08:49:d0"],
-    "10":   [30853686646406, 2, 3, "1c:0f:af:08:56:86"],
-    "11a":  [30853686650497, 3, 7, "1c:0f:af:08:66:81"],
-    "11b":  [30853686650366, 3, 7, "1c:0f:af:08:65:fe"],
 }
 
 class LightController:
@@ -118,17 +97,39 @@ class CameraNode(Node):
         self.save_pub = self.create_publisher(Image, f'save_{self.name}', 10)
         self.view_pub = self.create_publisher(Image, f'view_{self.name}', 10)
         self.camera_trigger = self.create_subscription(Int16, f'trigger_{self.name}', self.callback, 10)
+        
         self.buffer_bytes_per_pixel = None
         self.time_now = 0
         self.config_dir = get_package_share_directory(f'harvester') + '/configs/'
         self.lights = LightController() if lights else None
 
+    def get_cam_info(self, msg):
+        for camera in msg.cameras:
+            device_info = {}
+            device_info["model"] = camera.model
+            device_info["vendor"] = camera.vendor
+            device_info["serial"] = camera.serial
+            device_info["ip"] = camera.ip
+            device_info["subnetmask"] = camera.subnetmask
+            device_info["defaultgateway"] = camera.defaultgateway
+            device_info["mac"] = camera.mac
+            device_info["name"] = camera.name
+            device_info["version"] = camera.version
+            device_info["dhcp"] = camera.dhcp
+            device_info["presistentip"] = camera.presistentip
+            device_info["lla"] = camera.lla
+            self.device_infos.append(device_info)
+            if camera.id == self.name:
+                self.cam_info = camera
+                self.mac = camera.mac
+        self.destroy_subscription(self.camera_info_sub)
 
     def create_camera(self):
         tries = 0
         tries_max = 6
         sleep_time_secs = 10
         result_dict = next((d for d in self.device_infos if d.get("mac") == self.mac), None)
+        print(result_dict)
         while tries < tries_max: 
             devices = system.create_device(result_dict)
             if not devices:
@@ -212,18 +213,14 @@ class CameraNode(Node):
 def main(args=None):
     rclpy.init()
     print('... I GOT TO GO HARVEST ...')
+
     # check for available cameras
-    device_infos = system.device_infos
-
     device_infos_no_dup = []
-
-    for device in device_infos:
+    for device in system.device_infos:
         if device not in device_infos_no_dup:
             device_infos_no_dup.append(device)
-
     cam_array = []
-    num_threads = len(device_infos_no_dup)
-    executor = MultiThreadedExecutor(num_threads=num_threads)
+    executor = MultiThreadedExecutor(num_threads=len(device_infos_no_dup))
 
     for camera in device_infos_no_dup:
         mac = camera["mac"]
@@ -236,9 +233,9 @@ def main(args=None):
                 executor.add_node(camera_node)
             except Exception as e:
                 print(f"An error occurred: {str(e)}")
-
         except Exception as e:
             print(f"An error occurred: {str(e)}")
+
     try:
         executor.spin()
     except Exception as e:

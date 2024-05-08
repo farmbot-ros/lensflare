@@ -30,6 +30,7 @@ setup(
     entry_points={
         'console_scripts': [
             'camera_node = harvester.camera_node:main',
+            'camera_node2 = harvester.camera_node2:main',
             'camera_info = harvester.camera_info:main',
             'image_saver = harvester.image_saver:main',
             'timer_trigger = harvester.trigger_node:main',
