@@ -33,7 +33,7 @@ setup(
             'flash_node = harvester.flash_node:main',
             'camera_info = harvester.camera_info:main',
             'image_saver = harvester.image_saver:main',
-            'timer_trigger = harvester.timer_node:main',
+            'trigger_node = harvester.timer_node:main',
         ],
     },
 )

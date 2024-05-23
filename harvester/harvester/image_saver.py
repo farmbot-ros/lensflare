@@ -13,7 +13,6 @@ class ImageSubscriber(Node):
         
         cameras = ["7a", "7b", "7c", "7d", "7e", "9a", "9b", "9c", "9d", "9e", "1", "3", "4", "10", "11a", "11b", "12", "13"] # TODO: use camera names from scan
         for camera in cameras:
-            print(camera)
             self.create_subscription(Image, f"save_{camera}", lambda msg, cam=camera: self.image_callback(msg, cam), 10)
 
         self.bridge = CvBridge()

@@ -41,7 +41,7 @@ camera_info = None
 class CameraArray(Node):
     def __init__(self):
         super().__init__('camera_array')
-        self.publish_array_info_pub = self.create_timer(0.1, self.publish_array_info)
+        self.publish_array_info_pub = self.create_timer(0.001, self.publish_array_info)
         self.array_pub = self.create_publisher(CameraDeviceArray, '/caminfo', 10)
 
     def publish_array_info(self):
@@ -49,7 +49,7 @@ class CameraArray(Node):
         if camera_info is not None:
             self.array_pub.publish(camera_info)
             ids = [camera.id for camera in camera_info.cameras]
-            self.get_logger().info(f"cameras infos of {ids} are published")
+            # self.get_logger().info(f"cameras infos of {ids} are published")
 
 class CameraInfo(Node):
     def __init__(self):

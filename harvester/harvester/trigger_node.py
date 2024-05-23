@@ -5,9 +5,9 @@ from std_msgs.msg import Int16, Bool
 import time
 
 
-class TimerNode(Node):
+class TriggerNode(Node):
     def __init__(self, camera_array, group, message, sequence_interval, inter_camera_delay):
-        super().__init__(f'timer_node_{str(group)}')
+        super().__init__(f'trigger_node_{str(group)}')
         self.trigger_pub_dict = {}
         self.flash_pub_dict = {}
         self.message = message
@@ -40,8 +40,8 @@ def main(args=None):
     acquisition_cameras = ["7a", "7b", "7c", "7d", "7e", "9a", "9b", "9c", "9d", "9e", "1", "3", "4", "10", "12"]
 
     executor = MultiThreadedExecutor(num_threads=2)
-    camera_group_1 = TimerNode(inference_cameras, "inference", 1, sequence_interval=10, inter_camera_delay=1)
-    camera_group_2 = TimerNode(acquisition_cameras, "aquisition", 1, sequence_interval=60, inter_camera_delay=1)
+    camera_group_1 = TriggerNode(inference_cameras, "inference", 1, sequence_interval=10, inter_camera_delay=1)
+    camera_group_2 = TriggerNode(acquisition_cameras, "aquisition", 1, sequence_interval=60, inter_camera_delay=1)
     try:
         executor.add_node(camera_group_1)
         executor.add_node(camera_group_2)
