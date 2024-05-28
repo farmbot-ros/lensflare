@@ -2,6 +2,7 @@ from arena_api.system import system
 from arena_api.buffer import *
 import ctypes
 import numpy as np
+import cv2
 from cv_bridge import CvBridge
 import time
 from harvester_interfaces.msg import CameraDevice, CameraDeviceArray
@@ -22,8 +23,8 @@ from std_msgs.msg import Int16
 IP_LIGHT = {
       0 : None,
       1 : "192.168.2.251", # 7 RIGHT     70:B3:D5:DD:90:FD
-      3 : "192.168.2.252", # - CENTER    70:B3:D5:DD:90:EF
       2 : "192.168.2.253", # 9 LEFT      70:B3:D5:DD:90:ED
+      3 : "192.168.2.252", # - CENTER    70:B3:D5:DD:90:EF
 }
 
 GAIN = 20
@@ -62,6 +63,7 @@ class CameraNode(Node):
         super().__init__(f'camera_{self.name}_node')
         self.save_pub = self.create_publisher(Image, f'save_{self.name}', 10)
         self.view_pub = self.create_publisher(Image, f'view_{self.name}', 10)
+        self.inf_pub = self.create_publisher(Image, f'inf_{self.name}', 10)
         self.camera_trigger = self.create_subscription(Int16, f'trigger_{self.name}', self.callback, 10)
         
         self.buffer_bytes_per_pixel = None
@@ -113,9 +115,15 @@ class CameraNode(Node):
         self.get_logger().info(f"Setting up camera {self.name}, from file.")
         FILE_NAME = self.config_dir + self.name + '.txt'
         print(f"Reading from file: {FILE_NAME}")
-        device.nodemap.read_streamable_node_values_from(FILE_NAME)
+        nodemap = device.nodemap
+        nodemap.read_streamable_node_values_from(FILE_NAME)
 
-    def setup_camera(self, device):
+        tl_stream_nodemap = device.tl_stream_nodemap
+        tl_stream_nodemap["StreamBufferHandlingMode"].value = "NewestOnly"
+        tl_stream_nodemap['StreamAutoNegotiatePacketSize'].value = True
+        tl_stream_nodemap['StreamPacketResendEnable'].value = True
+
+    def setup_camera_from_list(self, device):
         nodemap = device.nodemap
         self.mac_add = nodemap.get_node('GevMACAddress').value
         nodemap.get_node('Width').value = nodemap.get_node('Width').max
@@ -133,6 +141,7 @@ class CameraNode(Node):
         tl_stream_nodemap['StreamPacketResendEnable'].value = True
 
 
+
     def initialize_camera(self):
         devices = self.create_camera()
         self.device = devices[0]
@@ -140,8 +149,8 @@ class CameraNode(Node):
         self.num_channels = 3
         self.curr_frame_time = 0
         self.prev_frame_time = 0
-        # self.setup_camera(self.device)
-        self.setup_camera_from_file(self.device)
+        # self.setup_camera_from_file(self.device)
+        self.setup_camera_from_list(self.device)
         self.device.start_stream(500)
 
     def stop_camera(self):
@@ -161,21 +170,29 @@ class CameraNode(Node):
         image_msg = self.bridge.cv2_to_imgmsg(npndarray) 
         # image_msg = self.bridge.cv2_to_compressed_imgmsg(npndarray)
         image_msg.header.stamp = self.get_clock().now().to_msg()
+
         if msg.data == 1:
             self.save_pub.publish(image_msg)
         elif msg.data == 2:
             self.view_pub.publish(image_msg)
+        elif msg.data == 3:
+            self.save_pub.publish(image_msg)
+            self.inf_pub.publish(image_msg)
+        elif msg.data == 4:
+            self.inf_pub.publish(image_msg)
+
         timedf = time.time() - self.time_now
-        print(f"Time difference: {timedf}")
+        print(f"Camera: {self.name} frame published at: {msg.data} with time difference: {timedf}")
         self.time_now = time.time()
         self.device.requeue_buffer(buffer)
-
-
 
 
 def main(args=None):
     rclpy.init()
     print('... I GOT TO GO HARVEST ...')
+    
+    all_cameras = ["7a", "7b", "7c", "7d", "7e", "9a", "9b", "9c", "9d", "9e", "1", "3", "4", "10", "11a", "11b", "12", "13"] 
+    cameras_to_use = ["11a", "11b","4"]
 
     # check for available cameras
     device_infos_no_dup = []
@@ -186,16 +203,18 @@ def main(args=None):
     executor = MultiThreadedExecutor(num_threads=len(device_infos_no_dup))
 
     for camera in device_infos_no_dup:
-        mac = camera["mac"]
-        hex_mac = int(mac.replace(":", ""), 16)
+        dec_mac = camera["mac"]
+        hex_mac = int(dec_mac.replace(":", ""), 16)
         try:
-            camera_node = CameraNode(BY_MAC[hex_mac][2], mac, device_infos_no_dup)
-            camera_node.initialize_camera()
-            cam_array.append(camera_node)
-            try:
-                executor.add_node(camera_node)
-            except Exception as e:
-                print(f"An error occurred: {str(e)}")
+            camera_name = BY_MAC[hex_mac][2]
+            if camera_name in cameras_to_use:
+                camera_node = CameraNode(camera_name, dec_mac, device_infos_no_dup)
+                camera_node.initialize_camera()
+                cam_array.append(camera_node)
+                try:
+                    executor.add_node(camera_node)
+                except Exception as e:
+                    print(f"An error occurred: {str(e)}")
         except Exception as e:
             print(f"An error occurred: {str(e)}")
 
