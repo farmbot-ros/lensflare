@@ -71,7 +71,7 @@ class FlashNode(Node):
     def flash_callback(self, msg, ip, channel):
         if msg.data:
             print(f"light controller ip: {ip}, channel number: {channel}")
-            # self.pulse(ip, channel)
+            self.pulse(ip, channel)
 
 
 
