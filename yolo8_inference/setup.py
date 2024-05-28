@@ -21,7 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'yolo8_inference = yolo8_inference.yolo8_inference:main',
-            'yolo8_inference2 = yolo8_inference.yolo8_inference2:main'
+            # 'yolo8_inference2 = yolo8_inference.yolo8_inference2:main'
         ],
     },
 )
