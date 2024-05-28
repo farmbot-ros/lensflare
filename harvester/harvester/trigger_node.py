@@ -39,9 +39,15 @@ def main(args=None):
     inference_cameras = ["11a", "11b", "13"]
     acquisition_cameras = ["7a", "7b", "7c", "7d", "7e", "9a", "9b", "9c", "9d", "9e", "1", "3", "4", "10", "12"]
 
+    # messages
+    # 1 save the image
+    # 2 view the image
+    # 3 save and inference
+    # 4 only inference
+
     executor = MultiThreadedExecutor(num_threads=2)
-    camera_group_1 = TriggerNode(inference_cameras, "inference", 1, sequence_interval=10, inter_camera_delay=1)
-    camera_group_2 = TriggerNode(acquisition_cameras, "aquisition", 1, sequence_interval=60, inter_camera_delay=1)
+    camera_group_1 = TriggerNode(inference_cameras, "inference", message=3, sequence_interval=10, inter_camera_delay=1)
+    camera_group_2 = TriggerNode(acquisition_cameras, "aquisition", message=1, sequence_interval=60, inter_camera_delay=1)
     try:
         executor.add_node(camera_group_1)
         executor.add_node(camera_group_2)
