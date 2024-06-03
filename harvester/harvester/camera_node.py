@@ -16,7 +16,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import Image
-from std_msgs.msg import Int16
+from std_msgs.msg import Int16, Float32
 
 
 
@@ -48,8 +48,8 @@ BY_MAC = {
     30853686643161: [IP_LIGHT[3],   2,   "13",   805*3.8,  20],
     30853686643152: [IP_LIGHT[3],   1,   "12",   460*3.8,  40],
     30853686646406: [IP_LIGHT[3],   3,   "10",     867.0,  30],
-    30853686650497: [IP_LIGHT[3],   7,   "11a",    498.0,  15],
-    30853686650366: [IP_LIGHT[3],   7,   "11b",    498.0,  15],
+    30853686650497: [IP_LIGHT[3],   7,   "11b",    498.0,  15],
+    30853686650366: [IP_LIGHT[3],   7,   "11a",    498.0,  15],
 }
 
 
@@ -61,10 +61,15 @@ class CameraNode(Node):
         self.device_infos = device_infos
         self.bridge = CvBridge()
         super().__init__(f'camera_{self.name}_node')
+
+        # publishers
         self.save_pub = self.create_publisher(Image, f'save_{self.name}', 10)
         self.view_pub = self.create_publisher(Image, f'view_{self.name}', 10)
         self.inf_pub = self.create_publisher(Image, f'inf_{self.name}', 10)
+        # subscribers
         self.camera_trigger = self.create_subscription(Int16, f'trigger_{self.name}', self.callback, 10)
+        self.create_subscription(Float32, f'set_gain_{self.name}', self.set_camera_gain, 1)
+        self.create_subscription(Float32, f'set_exp_{self.name}', self.set_camera_exp, 1)
         
         self.buffer_bytes_per_pixel = None
         self.time_now = 0
@@ -186,13 +191,24 @@ class CameraNode(Node):
         self.time_now = time.time()
         self.device.requeue_buffer(buffer)
 
+    def set_camera_exp(self, msg):
+
+        nodemap = self.device.nodemap
+        nodemap.get_node("ExposureAutoUpperLimit").value = msg.data
+        print(f'Exposure is set to {nodemap.get_node("ExposureAutoUpperLimit").value}')
+
+    def set_camera_gain(self, msg):
+        nodemap = self.device.nodemap
+        nodemap.get_node("GainAutoUpperLimit").value = msg.data
+        print(f'Gain is set to {nodemap.get_node("GainAutoUpperLimit").value}')
+
 
 def main(args=None):
     rclpy.init()
     print('... I GOT TO GO HARVEST ...')
     
     all_cameras = ["7a", "7b", "7c", "7d", "7e", "9a", "9b", "9c", "9d", "9e", "1", "3", "4", "10", "11a", "11b", "12", "13"] 
-    cameras_to_use = ["11a", "11b","4"]
+    cameras_to_use = ["11b", "7b", "1"]
 
     # check for available cameras
     device_infos_no_dup = []
@@ -207,7 +223,7 @@ def main(args=None):
         hex_mac = int(dec_mac.replace(":", ""), 16)
         try:
             camera_name = BY_MAC[hex_mac][2]
-            if camera_name in cameras_to_use:
+            if camera_name in all_cameras:
                 camera_node = CameraNode(camera_name, dec_mac, device_infos_no_dup)
                 camera_node.initialize_camera()
                 cam_array.append(camera_node)

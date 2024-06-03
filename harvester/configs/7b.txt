@@ -1,6 +1,6 @@
 # {05D8C294-F295-4dfb-9D01-096BD04049F4}
 # GenApi persistence file (version 3.3.0)
-# Device = Lucid::TRI089S -- Lucid Vision Labs - TRI089S -- Device version = 1.0.0 -- Product GUID = 441ae192-727d-410a-94ec-0d24f5bef695 -- Product version GUID = fff74e1c-713b-4f4e-acc9-4ac580657560
+# Device = Lucid::TRI032S -- Lucid Vision Labs - TRI032S -- Device version = 1.0.0 -- Product GUID = e679ff40-2242-4826-add3-8fde08bd4c1f -- Product version GUID = 24120f45-36bb-418e-8da5-42e03d438b93
 DeviceLinkSelector	0
 DeviceLinkSelector	0
 DeviceLinkThroughputLimitMode	Off
@@ -88,8 +88,8 @@ ExposureTimeSelector	Common
 ShortExposureEnable	0
 ExposureAuto	Continuous
 ExposureAutoLimitAuto	Off
-ExposureAutoLowerLimit	47.208
-ExposureAutoUpperLimit	3144.42
+ExposureAutoLowerLimit	30.288
+ExposureAutoUpperLimit	626.264
 TargetBrightness	128
 ExposureAutoAlgorithm	Mean
 ExposureAutoDamping	89.8
@@ -224,8 +224,8 @@ UserOutputValue	0
 UserOutputSelector	UserOutput0
 PixelFormat	BGR8
 ADCBitDepth	Bits12
-Width	4096
-Height	2160
+Width	2048
+Height	1536
 OffsetX	0
 OffsetY	0
 MultipleROIRowsEnable	0
@@ -251,7 +251,7 @@ GainSelector	All
 GainAuto	Continuous
 GainSelector	All
 GainAutoLowerLimit	0
-GainAutoUpperLimit	20
+GainAutoUpperLimit	30
 BlackLevelSelector	All
 BlackLevelSelector	All
 BlackLevel	0
@@ -273,23 +273,23 @@ ColorTransformationSelector	RGBtoRGB
 ColorTransformationSelector	RGBtoRGB
 ColorTransformationValueSelector	Gain00
 ColorTransformationValueSelector	Gain00
-ColorTransformationValue	1.5811
+ColorTransformationValue	1.5801
 ColorTransformationValueSelector	Gain01
-ColorTransformationValue	-0.37549
+ColorTransformationValue	-0.37695
 ColorTransformationValueSelector	Gain02
-ColorTransformationValue	-0.20557
+ColorTransformationValue	-0.20312
 ColorTransformationValueSelector	Gain10
-ColorTransformationValue	-0.34888
+ColorTransformationValue	-0.34326
 ColorTransformationValueSelector	Gain11
-ColorTransformationValue	1.6606
+ColorTransformationValue	1.6528
 ColorTransformationValueSelector	Gain12
-ColorTransformationValue	-0.31152
+ColorTransformationValue	-0.30957
 ColorTransformationValueSelector	Gain20
-ColorTransformationValue	0.079834
+ColorTransformationValue	0.077881
 ColorTransformationValueSelector	Gain21
-ColorTransformationValue	-0.56006
+ColorTransformationValue	-0.55518
 ColorTransformationValueSelector	Gain22
-ColorTransformationValue	1.4802
+ColorTransformationValue	1.4773
 ColorTransformationValueSelector	Offset0
 ColorTransformationValue	0
 ColorTransformationValueSelector	Offset1
