@@ -142,6 +142,7 @@ class CameraNode(Node):
         nodemap.get_node("ExposureAutoUpperLimit").value = BY_MAC[self.mac_add][3]
         nodemap.get_node("GainAuto").value = "Continuous"
         nodemap.get_node("GainAutoUpperLimit").value = float(BY_MAC[self.mac_add][4])
+        
         nodemap.get_node("PtpEnable").value = True
         nodemap.get_node("AcquisitionStartMode").value = "PTPSync"
         nodemap.get_node("AcquisitionFrameRate").value = nodemap.get_node("AcquisitionFrameRate").max
