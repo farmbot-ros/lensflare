@@ -33,6 +33,7 @@ find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(fmt REQUIRED)
+find_package(harvester_interfaces REQUIRED)
 
 set(ros_dependencies
   rclcpp
@@ -41,6 +42,7 @@ set(ros_dependencies
   sensor_msgs
   cv_bridge
   image_transport
+  harvester_interfaces
   arena_sdk
   OpenCV
   fmt
@@ -48,7 +50,7 @@ set(ros_dependencies
 
 
 add_executable(camera_node
-  src/ArenaCam.cpp
+  src/CameraNode.cpp
 )
 ament_target_dependencies(camera_node ${ros_dependencies})
 
@@ -56,6 +58,11 @@ ament_target_dependencies(camera_node ${ros_dependencies})
 install(TARGETS
   camera_node
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
+    DIRECTORY include/
+    DESTINATION include
 )
 
 install(

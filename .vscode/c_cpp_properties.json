@@ -7,7 +7,7 @@
       },
       "includePath": [
         "/home/bresilla/ROS_OXBO/install/visionplus/include/**",
-        "/home/bresilla/ROS_OXBO/install/harvester_interfaces/include/**",
+        "/home/bresilla/ROS_OXBO/install/harvester_interfaces/include/harvester_interfaces/**",
         "/opt/ros/humble/include/**",
         "/home/bresilla/ROS_OXBO/src/genicam/include/**",
         "/usr/include/**",
