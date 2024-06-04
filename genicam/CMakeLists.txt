@@ -52,11 +52,18 @@ set(ros_dependencies
 add_executable(camera_node
   src/CameraNode.cpp
 )
+
+add_executable(camera_info
+  src/CameraInfo.cpp
+)
+
 ament_target_dependencies(camera_node ${ros_dependencies})
+ament_target_dependencies(camera_info ${ros_dependencies})
 
 
 install(TARGETS
   camera_node
+  camera_info
   DESTINATION lib/${PROJECT_NAME}
 )
 
