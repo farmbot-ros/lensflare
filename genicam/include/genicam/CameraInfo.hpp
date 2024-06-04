@@ -21,10 +21,15 @@ class CameraArray : public rclcpp::Node {
 class CameraInfo : public rclcpp::Node {
     rclcpp::TimerBase::SharedPtr update_camera_info_timer_;
     harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info;
+
+    std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_;
+    
     public:
         CameraInfo(harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info);
     private:
         uint64_t convert_mac(std::string mac);
         void updateCameraInfo();
+        void paramCallback(const rclcpp::Parameter & p);
 
 };
