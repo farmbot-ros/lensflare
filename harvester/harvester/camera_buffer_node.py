@@ -31,25 +31,25 @@ GAIN = 20
 EXP = 1.2
 
 BY_MAC = { 
-    ##  MAC             IP      CHANNEL NAME    EXP     GAIN    SW     SCPD        SCFTD
-    30853686642969: [IP_LIGHT[2],   7,   "9b",   521*EXP,  30,   1,    240000,    0*80000],
-    30853686643065: [IP_LIGHT[2],   1,   "9a",   521*EXP,  30,   1,    240000,    1*80000],
-    30853686646563: [IP_LIGHT[2],   2,   "9c",   521*EXP,  30,   1,    240000,    2*80000],
-    30853686653149: [IP_LIGHT[2],   5,   "9d",   521*EXP,  30,   1,    240000,    3*80000],
-    30853686643056: [IP_LIGHT[2],   6,   "9e",   521*EXP,  30,   2,    240000,    0*80000],
-    30853686646554: [IP_LIGHT[1],   6,   "7a",   521*EXP,  30,   2,    240000,    1*80000],
-    30853686653140: [IP_LIGHT[1],   3,   "7e",   521*EXP,  30,   2,    240000,    2*80000],
-    30853686445113: [IP_LIGHT[1],   5,   "7c",   521*EXP,  30,   2,    240000,    3*80000],
-    30853686646528: [IP_LIGHT[1],   2,   "7d",   521*EXP,  30,   3,    240000,    0*80000],
-    30853686652294: [IP_LIGHT[1],   1,   "7b",   521*EXP,  30,   3,    240000,    2*80000],
-    30853686643187: [IP_LIGHT[0],   0,   "1",   2847*1.1,  20,   3,    240000,    1*80000],
-    30853686650340: [IP_LIGHT[3],   6,   "4",    528*2.8,  30,   3,    240000,    3*80000],
-    30853686646397: [IP_LIGHT[3],   5,   "3",    810*2.8,  20,   4,    240000,    0*80000],
-    30853686643152: [IP_LIGHT[3],   1,   "12",   460*3.8,  40,   4,    240000,    1*80000],
-    30853686646406: [IP_LIGHT[3],   3,   "10",     867.0,  30,   4,    240000,    2*80000], 
-    30853686643161: [IP_LIGHT[3],   2,   "13",   805*3.8,  20,   0,    240000,    0*80000], # directly
-    30853686650497: [IP_LIGHT[3],   7,   "11b",    498.0,  15,   0,    240000,    0*80000], # directly
-    30853686650366: [IP_LIGHT[3],   7,   "11a",    498.0,  15,   0,    240000,    0*80000], # directly
+    ##  MAC             IP      CHANNEL NAME    EXP     GAIN
+    30853686642969: [IP_LIGHT[2],   7,   "9b",   521*EXP,  30],
+    30853686643065: [IP_LIGHT[2],   1,   "9a",   521*EXP,  30],
+    30853686646563: [IP_LIGHT[2],   2,   "9c",   521*EXP,  30],
+    30853686653149: [IP_LIGHT[2],   5,   "9d",   521*EXP,  30],
+    30853686643056: [IP_LIGHT[2],   6,   "9e",   521*EXP,  30],
+    30853686646554: [IP_LIGHT[1],   6,   "7a",   521*EXP,  30],
+    30853686652294: [IP_LIGHT[1],   1,   "7b",   521*EXP,  30],
+    30853686445113: [IP_LIGHT[1],   5,   "7c",   521*EXP,  30],
+    30853686646528: [IP_LIGHT[1],   2,   "7d",   521*EXP,  30],
+    30853686653140: [IP_LIGHT[1],   3,   "7e",   521*EXP,  30],
+    30853686643187: [IP_LIGHT[0],   0,   "1",   2847*1.1,  20],
+    30853686650340: [IP_LIGHT[3],   6,   "4",    528*2.8,  30],
+    30853686646397: [IP_LIGHT[3],   5,   "3",    810*2.8,  20],
+    30853686643161: [IP_LIGHT[3],   2,   "13",   805*3.8,  20],
+    30853686643152: [IP_LIGHT[3],   1,   "12",   460*3.8,  40],
+    30853686646406: [IP_LIGHT[3],   3,   "10",     867.0,  30],
+    30853686650497: [IP_LIGHT[3],   7,   "11b",    498.0,  15],
+    30853686650366: [IP_LIGHT[3],   7,   "11a",    498.0,  15],
 }
 
 
@@ -142,13 +142,6 @@ class CameraNode(Node):
         nodemap.get_node("ExposureAutoUpperLimit").value = BY_MAC[self.mac_add][3]
         nodemap.get_node("GainAuto").value = "Continuous"
         nodemap.get_node("GainAutoUpperLimit").value = float(BY_MAC[self.mac_add][4])
-        nodemap.get_node("PtpEnable").value = True
-        nodemap.get_node("AcquisitionStartMode").value = "PTPSync"
-        nodemap.get_node("AcquisitionFrameRate").value = nodemap.get_node("AcquisitionFrameRate").max
-        nodemap.get_node("PTPSyncFrameRate").value = 7.0
-
-        nodemap.get_node("GevSCPD").value = BY_MAC[self.mac_add][6]
-        nodemap.get_node("GevSCFTD").value = BY_MAC[self.mac_add][7]
 
         tl_stream_nodemap = device.tl_stream_nodemap
         tl_stream_nodemap["StreamBufferHandlingMode"].value = "NewestOnly"
@@ -174,28 +167,35 @@ class CameraNode(Node):
 
     
     def callback(self, msg):
-        buffer = self.device.get_buffer()
-        if self.buffer_bytes_per_pixel is None:
-            self.image_width = buffer.width
-            self.image_height = buffer.height
-            self.buffer_bytes_per_pixel = int(len(buffer.data)/(self.image_width * self.image_height))
-        array = (ctypes.c_ubyte * (self.num_channels  * self.image_width * self.image_height)).from_address(ctypes.addressof(buffer.pbytes))
-        npndarray = np.ctypeslib.as_array(array).reshape(self.image_height, self.image_width, self.num_channels)
-        # image_msg = self.bridge.cvtype2_to_dtype_with_channels(array)
-        image_msg = self.bridge.cv2_to_imgmsg(npndarray) 
-        # image_msg = self.bridge.cv2_to_compressed_imgmsg(npndarray)
-        image_msg.header.stamp = self.get_clock().now().to_msg()
-        if msg.data == 1:
-            self.save_pub.publish(image_msg)
-        elif msg.data == 2:
-            self.view_pub.publish(image_msg)
-        elif msg.data == 3:
-            self.save_pub.publish(image_msg)
-            self.inf_pub.publish(image_msg)
-        elif msg.data == 4:
-            self.inf_pub.publish(image_msg)
-        print(f"Camera: {self.name} frame published at: {msg.data}")
-        self.device.requeue_buffer(buffer)
+        buffers = self.device.get_buffer(30)
+
+        for count, buffer in enumerate(buffers):
+            if count == 15:
+                if self.buffer_bytes_per_pixel is None:
+                    self.image_width = buffer.width
+                    self.image_height = buffer.height
+                    self.buffer_bytes_per_pixel = int(len(buffer.data)/(self.image_width * self.image_height))
+                array = (ctypes.c_ubyte * (self.num_channels  * self.image_width * self.image_height)).from_address(ctypes.addressof(buffer.pbytes))
+                npndarray = np.ctypeslib.as_array(array).reshape(self.image_height, self.image_width, self.num_channels)
+                # image_msg = self.bridge.cvtype2_to_dtype_with_channels(array)
+                image_msg = self.bridge.cv2_to_imgmsg(npndarray) 
+                # image_msg = self.bridge.cv2_to_compressed_imgmsg(npndarray)
+                image_msg.header.stamp = self.get_clock().now().to_msg()
+
+                if msg.data == 1:
+                    self.save_pub.publish(image_msg)
+                elif msg.data == 2:
+                    self.view_pub.publish(image_msg)
+                elif msg.data == 3:
+                    self.save_pub.publish(image_msg)
+                    self.inf_pub.publish(image_msg)
+                elif msg.data == 4:
+                    self.inf_pub.publish(image_msg)
+
+                timedf = time.time() - self.time_now
+                print(f"Camera: {self.name} frame published at: {msg.data} with time difference: {timedf}")
+                self.time_now = time.time()
+        # self.device.requeue_buffer(buffers)
 
 
     def set_camera_exp(self, msg):
@@ -253,26 +253,6 @@ def main(args=None):
         rclpy.shutdown()
 
 
-def main(args=None):
-    rclpy.init()
-    print('... I GOT TO GO HARVEST ...')
-    # check for available cameras
-    device_infos_no_dup = []
-    for device in system.device_infos:
-        if device not in device_infos_no_dup:
-            device_infos_no_dup.append(device)
-    cam_array = []
-
-    for camera in device_infos_no_dup:
-        dec_mac = camera["mac"]
-        hex_mac = int(dec_mac.replace(":", ""), 16)
-        camera_name = BY_MAC[hex_mac][2]
-        if camera_name == "1":
-            camera_node = CameraNode(camera_name, dec_mac, device_infos_no_dup)
-            camera_node.initialize_camera()
-            rclpy.spin(camera_node)
-
-    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

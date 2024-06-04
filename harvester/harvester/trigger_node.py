@@ -17,6 +17,7 @@ class TriggerNode(Node):
         for camera in self.camera_array:
             self.trigger_pub_dict[camera] = self.create_publisher(Int16, f"trigger_{camera}", 10)
             self.flash_pub_dict[camera] = self.create_publisher(Bool, f"flash_{camera}",10)
+            time.sleep(self.inter_camera_delay)
 
 
     def timer_callback(self):
@@ -28,7 +29,7 @@ class TriggerNode(Node):
             self.flash_pub_dict[camera].publish(flash_msg)
             time.sleep(0.01) # TODO: tweak this delay such that it fits capturing the image which lights
             self.trigger_pub_dict[camera].publish(trigger_msg)
-            print(f"hi from {camera}")
+            print(f"triggering {camera}")
             time.sleep(self.inter_camera_delay)
 
 
@@ -37,7 +38,7 @@ def main(args=None):
     print('... TRIGGERING CAMERAS ...')
 
     inference_cameras = ["11a", "11b", "13"]
-    acquisition_cameras = ["7a", "7b", "7c", "7d", "7e", "9a", "9b", "9c", "9d", "9e", "1", "3", "4", "10", "12"]
+    acquisition_cameras = ["7a", "1", "7c", "7d", "7e", "9a", "9b", "9c", "9d", "9e", "7b", "3", "4", "10", "12"]
 
     # messages
     # 1 save the image
@@ -46,8 +47,8 @@ def main(args=None):
     # 4 only inference
 
     executor = MultiThreadedExecutor(num_threads=2)
-    camera_group_1 = TriggerNode(inference_cameras, "inference", message=3, sequence_interval=10, inter_camera_delay=1)
-    camera_group_2 = TriggerNode(acquisition_cameras, "aquisition", message=1, sequence_interval=60, inter_camera_delay=1)
+    camera_group_1 = TriggerNode(inference_cameras, "inference", message=3, sequence_interval=1, inter_camera_delay=1)
+    camera_group_2 = TriggerNode(acquisition_cameras, "aquisition", message=1, sequence_interval=2, inter_camera_delay=1)
     try:
         executor.add_node(camera_group_1)
         executor.add_node(camera_group_2)
