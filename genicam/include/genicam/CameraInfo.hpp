@@ -36,7 +36,6 @@ class CameraInfo : public rclcpp::Node {
     public:
         CameraInfo(harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info);
     private:
-        uint64_t convert_mac(std::string mac);
         void update_camera_info();
         void param_callback(const rclcpp::Parameter & p);
 

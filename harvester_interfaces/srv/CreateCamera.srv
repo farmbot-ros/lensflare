@@ -2,4 +2,5 @@ string camera_name
 string mac_address
 ---
 bool success
+string message
 CameraDevice camera_device

@@ -8,6 +8,10 @@
 #include <genicam/CameraInfo.hpp>
 
 
+uint64_t convert_mac(std::string mac) {
+    mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
+    return strtoul(mac.c_str(), NULL, 16);
+}
 
 CameraArray::CameraArray(harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info) : Node("camera_array"), camera_info (camera_info) {
     publish_array_info_timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&CameraArray::publish_camera_info, this));
@@ -16,8 +20,35 @@ CameraArray::CameraArray(harvester_interfaces::msg::CameraDeviceArray::SharedPtr
 }
 
 void CameraArray::service_trigger(const std::shared_ptr<camc::Request> request, std::shared_ptr<camc::Response> response) {
-    // request->type == 1
-    // response->success = false;
+    if (camera_info->cameras.empty()) {
+        response->success = false;
+        response->message = "No cameras found";
+        return;
+    }
+    std::string camera_name = request->camera_name;
+    std::string mac_address = request->mac_address;
+    harvester_interfaces::msg::CameraDevice camera_device = harvester_interfaces::msg::CameraDevice();
+    if (!mac_address.empty()) {
+        uint64_t hex_mac = convert_mac(mac_address);
+        for (const auto &camera : camera_info->cameras) {
+            if (convert_mac(camera.mac) == hex_mac) {
+                camera_device = camera;
+                response->success = true;
+                break;
+            }
+        }
+    } else if (!camera_name.empty()) {
+        for (const auto &camera : camera_info->cameras) {
+            if (camera.name == camera_name) {
+                camera_device = camera;
+                response->success = true;
+                break;
+            }
+        }
+    } else {
+        response->success = false;
+        response->message = "Missing camera name or mac address";
+    }
 }
 
 void CameraArray::publish_camera_info() {
@@ -66,10 +97,6 @@ void CameraInfo::param_callback(const rclcpp::Parameter & p) {
     }
 }
 
-uint64_t CameraInfo::convert_mac(std::string mac) {
-    mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
-    return strtoul(mac.c_str(), NULL, 16);
-}
 
 void CameraInfo::update_camera_info() {
     Arena::ISystem* pSystem = nullptr;
