@@ -12,8 +12,13 @@
 CameraArray::CameraArray(harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info) : Node("camera_array"), camera_info (camera_info) {
     publish_array_info_timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&CameraArray::publish_camera_info, this));
     array_pub_ = this->create_publisher<harvester_interfaces::msg::CameraDeviceArray>("/caminfo", 10);
+    service = this->create_service<camc>("caminfo", std::bind(&CameraArray::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
 }
 
+void CameraArray::service_trigger(const std::shared_ptr<camc::Request> request, std::shared_ptr<camc::Response> response) {
+    // request->type == 1
+    // response->success = false;
+}
 
 void CameraArray::publish_camera_info() {
     if (camera_info->cameras.empty()) {

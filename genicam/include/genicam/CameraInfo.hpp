@@ -3,6 +3,8 @@
 #include <rclcpp/rclcpp.hpp>
 #include <harvester_interfaces/msg/camera_device.hpp>
 #include <harvester_interfaces/msg/camera_device_array.hpp>
+#include <harvester_interfaces/srv/create_camera.hpp>
+
 
 #include <ArenaApi.h>
 
@@ -11,10 +13,13 @@ class CameraArray : public rclcpp::Node {
     rclcpp::TimerBase::SharedPtr publish_array_info_timer_;
     rclcpp::Publisher<harvester_interfaces::msg::CameraDeviceArray>::SharedPtr array_pub_;
     harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info;
+    rclcpp::Service<harvester_interfaces::srv::CreateCamera>::SharedPtr service;
+    using camc = harvester_interfaces::srv::CreateCamera;
     public:
         CameraArray(harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info);
     private:
         void publish_camera_info();
+        void service_trigger(const std::shared_ptr<camc::Request> request, std::shared_ptr<camc::Response> response);
 
 };
 
