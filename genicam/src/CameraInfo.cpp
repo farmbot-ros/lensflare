@@ -10,12 +10,12 @@
 
 
 CameraArray::CameraArray(harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info) : Node("camera_array"), camera_info (camera_info) {
-    publish_array_info_timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&CameraArray::publishArrayInfo, this));
+    publish_array_info_timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&CameraArray::publish_camera_info, this));
     array_pub_ = this->create_publisher<harvester_interfaces::msg::CameraDeviceArray>("/caminfo", 10);
 }
 
 
-void CameraArray::publishArrayInfo() {
+void CameraArray::publish_camera_info() {
     if (camera_info->cameras.empty()) {
         return;
     }
@@ -28,29 +28,37 @@ void CameraArray::publishArrayInfo() {
 
 
 CameraInfo::CameraInfo(harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info) : Node("camera_info"), camera_info (camera_info) {
-    update_camera_info_timer_ = this->create_wall_timer(std::chrono::minutes(1), std::bind(&CameraInfo::updateCameraInfo, this));
+    update_camera_info_timer_ = this->create_wall_timer(std::chrono::minutes(1), std::bind(&CameraInfo::update_camera_info, this));
 
-    this->declare_parameter("param", 0);
-    this->declare_parameter("param2", "default");
+    this->declare_parameter("param_int", 0);
+    this->declare_parameter("param_float", 0.0);
+    this->declare_parameter("param_bool", true);
+    this->declare_parameter("param_str", "default");
 
-    // Create a parameter subscriber that can be used to monitor parameter changes
-    // (for this node's parameters as well as other nodes' parameters)
     param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
 
-    cb_handle_ = param_subscriber_->add_parameter_callback("param", std::bind(&CameraInfo::paramCallback, this, std::placeholders::_1));
-    cb_handle_ = param_subscriber_->add_parameter_callback("param2", std::bind(&CameraInfo::paramCallback, this, std::placeholders::_1));
+    param_int = param_subscriber_->add_parameter_callback("param_int", std::bind(&CameraInfo::param_callback, this, std::placeholders::_1));
+    param_str = param_subscriber_->add_parameter_callback("param_float", std::bind(&CameraInfo::param_callback, this, std::placeholders::_1));
+    param_float = param_subscriber_->add_parameter_callback("param_bool", std::bind(&CameraInfo::param_callback, this, std::placeholders::_1));
+    param_bool = param_subscriber_->add_parameter_callback("param_str", std::bind(&CameraInfo::param_callback, this, std::placeholders::_1));
 
-    updateCameraInfo();
+    update_camera_info();
 }
 
-void CameraInfo::paramCallback(const rclcpp::Parameter & p) {
-    if (p.get_type_name() != "string") {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Parameter %s is not a string", p.get_name().c_str());
-        return;
+void CameraInfo::param_callback(const rclcpp::Parameter & p) {
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Param type: %s", p.get_type_name().c_str());
+    if (p.get_type_name() == "string") {
+        harvester_interfaces::msg::CameraDevice camera_device = harvester_interfaces::msg::CameraDevice();
+        camera_device.id = p.get_parameter_value().get<std::string>();
+        camera_info->cameras.push_back(camera_device);
+        auto val = p.get_parameter_value().get<std::string>();
+    } else if (p.get_type_name() == "integer") {
+        auto val = p.get_parameter_value().get<int>();
+    } else if (p.get_type_name() == "double") {
+        auto val = p.get_parameter_value().get<float>();
+    } else if (p.get_type_name() == "bool") {
+        auto val = p.get_parameter_value().get<bool>();
     }
-    harvester_interfaces::msg::CameraDevice camera_device = harvester_interfaces::msg::CameraDevice();
-    camera_device.id = p.get_parameter_value().get<std::string>();
-    camera_info->cameras.push_back(camera_device);
 }
 
 uint64_t CameraInfo::convert_mac(std::string mac) {
@@ -58,7 +66,7 @@ uint64_t CameraInfo::convert_mac(std::string mac) {
     return strtoul(mac.c_str(), NULL, 16);
 }
 
-void CameraInfo::updateCameraInfo() {
+void CameraInfo::update_camera_info() {
     Arena::ISystem* pSystem = nullptr;
     std::vector<std::pair<Arena::IDevice*, uint64_t>> vDevices = std::vector<std::pair<Arena::IDevice*, uint64_t>>();
     harvester_interfaces::msg::CameraDeviceArray camera_array = harvester_interfaces::msg::CameraDeviceArray();

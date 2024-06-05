@@ -14,7 +14,7 @@ class CameraArray : public rclcpp::Node {
     public:
         CameraArray(harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info);
     private:
-        void publishArrayInfo();
+        void publish_camera_info();
 
 };
 
@@ -23,13 +23,17 @@ class CameraInfo : public rclcpp::Node {
     harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info;
 
     std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
-    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_;
+
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> param_int;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> param_str;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> param_float;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> param_bool;
     
     public:
         CameraInfo(harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info);
     private:
         uint64_t convert_mac(std::string mac);
-        void updateCameraInfo();
-        void paramCallback(const rclcpp::Parameter & p);
+        void update_camera_info();
+        void param_callback(const rclcpp::Parameter & p);
 
 };
