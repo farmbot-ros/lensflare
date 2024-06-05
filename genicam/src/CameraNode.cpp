@@ -33,6 +33,8 @@ CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, u
     trigger = this->create_subscription<std_msgs::msg::Int16>("trigger_" + name, 1, std::bind(&CameraNode::topic_trigger, this, std::placeholders::_1));
     service = this->create_service<trigg>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
     
+    flash_pub = this->create_publisher<std_msgs::msg::Bool>("flash_" + name, 1);
+
     init_cameras();
 }
 
@@ -101,7 +103,14 @@ void CameraNode::load_settings_from_file() {
 }
 
 
-void CameraNode::get_image(sensor_msgs::msg::Image::SharedPtr msg_image) {
+void CameraNode::get_image(sensor_msgs::msg::Image::SharedPtr msg_image, int trigger_type) {
+    // if (trigger_type == 10 || trigger_type == 20 || trigger_type == 30 || trigger_type == 40){
+    //     get_image(msg_image, trigger_type);
+    //     std_msgs::msg::Bool flash_msg = std_msgs::msg::Bool();
+    //     flash_msg.data = true;
+    //     flash_pub->publish(flash_msg);
+    // }
+
     try{
         Arena::IImage* pImage = pDevice->GetImage(5000);
         if (pImage != nullptr) {
@@ -120,7 +129,7 @@ void CameraNode::get_image(sensor_msgs::msg::Image::SharedPtr msg_image) {
 
 void CameraNode::topic_trigger(const std_msgs::msg::Int16::SharedPtr msg) {
     sensor_msgs::msg::Image::SharedPtr msg_image = nullptr;
-    get_image(msg_image);
+    get_image(msg_image, msg->data);
 
     if (msg_image == nullptr) {
         RCLCPP_WARN(this->get_logger(), "No image received");
@@ -142,7 +151,6 @@ void CameraNode::topic_trigger(const std_msgs::msg::Int16::SharedPtr msg) {
 }
 void CameraNode::service_trigger(const std::shared_ptr<trigg::Request> request, std::shared_ptr<trigg::Response> response) {
     sensor_msgs::msg::Image::SharedPtr msg_image = nullptr;
-    get_image(msg_image);
 
     if (msg_image == nullptr) {
         response->success = false;

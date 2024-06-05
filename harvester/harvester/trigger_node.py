@@ -22,11 +22,11 @@ class TriggerNode(Node):
 
     def timer_callback(self):
         for camera in self.camera_array:
-            flash_msg = Bool()
-            flash_msg.data = True
+            # flash_msg = Bool()
+            # flash_msg.data = True
+            # self.flash_pub_dict[camera].publish(flash_msg)
             trigger_msg = Int16()
             trigger_msg.data = self.message
-            self.flash_pub_dict[camera].publish(flash_msg)
             time.sleep(0.01) # TODO: tweak this delay such that it fits capturing the image which lights
             self.trigger_pub_dict[camera].publish(trigger_msg)
             print(f"triggering {camera}")
@@ -47,8 +47,8 @@ def main(args=None):
     # 4 only inference
 
     executor = MultiThreadedExecutor(num_threads=2)
-    camera_group_1 = TriggerNode(inference_cameras, "inference", message=3, sequence_interval=1, inter_camera_delay=1)
-    camera_group_2 = TriggerNode(acquisition_cameras, "aquisition", message=1, sequence_interval=2, inter_camera_delay=1)
+    camera_group_1 = TriggerNode(inference_cameras, "inference", message=30, sequence_interval=1, inter_camera_delay=1)
+    camera_group_2 = TriggerNode(acquisition_cameras, "aquisition", message=10, sequence_interval=2, inter_camera_delay=1)
     try:
         executor.add_node(camera_group_1)
         executor.add_node(camera_group_2)

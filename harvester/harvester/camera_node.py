@@ -12,6 +12,7 @@ import socket
 import time
 import json
 
+from std_msgs.msg import Int16, Bool
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
@@ -66,6 +67,8 @@ class CameraNode(Node):
         self.save_pub = self.create_publisher(Image, f'save_{self.name}', 1)
         self.view_pub = self.create_publisher(Image, f'view_{self.name}', 10)
         self.inf_pub = self.create_publisher(Image, f'inf_{self.name}', 1)
+
+        self.trigger_pub = self.create_publisher(Bool, f'flash_{self.name}', 10)
         # subscribers
         self.camera_trigger = self.create_subscription(Int16, f'trigger_{self.name}', self.callback, 10)
         self.create_subscription(Float32, f'set_gain_{self.name}', self.set_camera_gain, 1)
@@ -175,6 +178,12 @@ class CameraNode(Node):
 
     
     def callback(self, msg):
+        if msg.data == 10 or msg.data == 20 or msg.data == 30 or msg.data == 40:
+            flash_msg = Bool()
+            flash_msg.data = True
+            self.trigger_pub.publish(flash_msg)
+        time.sleep(0.8)
+            
         buffer = self.device.get_buffer()
         if self.buffer_bytes_per_pixel is None:
             self.image_width = buffer.width
@@ -186,14 +195,14 @@ class CameraNode(Node):
         image_msg = self.bridge.cv2_to_imgmsg(npndarray) 
         # image_msg = self.bridge.cv2_to_compressed_imgmsg(npndarray)
         image_msg.header.stamp = self.get_clock().now().to_msg()
-        if msg.data == 1:
+        if msg.data == 1 or msg.data == 10:
             self.save_pub.publish(image_msg)
-        elif msg.data == 2:
+        elif msg.data == 2 or msg.data == 20:
             self.view_pub.publish(image_msg)
-        elif msg.data == 3:
+        elif msg.data == 3 or msg.data == 30:
             self.save_pub.publish(image_msg)
             self.inf_pub.publish(image_msg)
-        elif msg.data == 4:
+        elif msg.data == 4 or msg.data == 40:
             self.inf_pub.publish(image_msg)
         print(f"Camera: {self.name} frame published at: {msg.data}")
         self.device.requeue_buffer(buffer)
@@ -254,26 +263,28 @@ def main(args=None):
         rclpy.shutdown()
 
 
-def main(args=None):
-    rclpy.init()
-    print('... I GOT TO GO HARVEST ...')
-    # check for available cameras
-    device_infos_no_dup = []
-    for device in system.device_infos:
-        if device not in device_infos_no_dup:
-            device_infos_no_dup.append(device)
-    cam_array = []
+# def main(args=None):
+#     rclpy.init()
+#     print('... I GOT TO GO HARVEST ...')
+#     # check for available cameras
+#     device_infos_no_dup = []
+#     for device in system.device_infos:
+#         if device not in device_infos_no_dup:
+#             device_infos_no_dup.append(device)
+#     cam_array = []
 
-    for camera in device_infos_no_dup:
-        dec_mac = camera["mac"]
-        hex_mac = int(dec_mac.replace(":", ""), 16)
-        camera_name = BY_MAC[hex_mac][2]
-        if camera_name == "1":
-            camera_node = CameraNode(camera_name, dec_mac, device_infos_no_dup)
-            camera_node.initialize_camera()
-            rclpy.spin(camera_node)
+#     print(cam_array)
 
-    rclpy.shutdown()
+#     for camera in device_infos_no_dup:
+#         dec_mac = camera["mac"]
+#         hex_mac = int(dec_mac.replace(":", ""), 16)
+#         camera_name = BY_MAC[hex_mac][2]
+#         if camera_name in all_cameras:
+#             camera_node = CameraNode(camera_name, dec_mac, device_infos_no_dup)
+#             camera_node.initialize_camera()
+#             rclpy.spin(camera_node)
+
+#     rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
