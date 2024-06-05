@@ -62,40 +62,44 @@ void CameraNode::param_callback(const rclcpp::Parameter & p) {
 }
 
 void CameraNode::init_cameras() {
-    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetTLStreamNodeMap(), "StreamBufferHandlingMode", "NewestOnly");
-    Arena::SetNodeValue<bool>(pDevice->GetTLStreamNodeMap(), "StreamAutoNegotiatePacketSize", true);
-    Arena::SetNodeValue<bool>(pDevice->GetTLStreamNodeMap(), "StreamPacketResendEnable", true);
-    
-    GenApi::CIntegerPtr width_node = pDevice->GetNodeMap()->GetNode("Width");
-    width_node->SetValue(width_node->GetMax());
-
-    GenApi::CIntegerPtr height_node = pDevice->GetNodeMap()->GetNode("Height");
-    height_node->SetValue(height_node->GetMax());
-
-    GenApi::CIntegerPtr channle_size = pDevice->GetNodeMap()->GetNode("DeviceStreamChannelPacketSize");
-    channle_size->SetValue(channle_size->GetMax());
-
-    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "PixelFormat", "BGR8");
-    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "ExposureAutoLimitAuto", "Off");
-    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "GainAuto", "Continuous");
+    load_settings_from_func();
 
     Arena::SetNodeValue<bool>(pDevice->GetNodeMap(), "PtpEnable", true);
     Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "AcquisitionStartMode", "PTPSync");
-
     GenApi::CFloatPtr framerate = pDevice->GetNodeMap()->GetNode("AcquisitionFrameRate");
     framerate->SetValue(framerate->GetMax());
-
     GenApi::CFloatPtr pPTPSyncFrameRate = pDevice->GetNodeMap()->GetNode("PTPSyncFrameRate");
     pPTPSyncFrameRate->SetValue(7.0);
-
     GenApi::CIntegerPtr pStreamChannelPacketDelay = pDevice->GetNodeMap()->GetNode("GevSCPD");
     pStreamChannelPacketDelay->SetValue(camset::by_mac.at(mac).scpd);
-
     GenApi::CIntegerPtr pStreamChannelFrameTransmissionDelay = pDevice->GetNodeMap()->GetNode("GevSCFTD");
     pStreamChannelFrameTransmissionDelay->SetValue(camset::by_mac.at(mac).scftd);
 
     pDevice->StartStream();
 }
+
+void CameraNode::load_settings_from_func() {
+    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetTLStreamNodeMap(), "StreamBufferHandlingMode", "NewestOnly");
+    Arena::SetNodeValue<bool>(pDevice->GetTLStreamNodeMap(), "StreamAutoNegotiatePacketSize", true);
+    Arena::SetNodeValue<bool>(pDevice->GetTLStreamNodeMap(), "StreamPacketResendEnable", true);
+    GenApi::CIntegerPtr width_node = pDevice->GetNodeMap()->GetNode("Width");
+    width_node->SetValue(width_node->GetMax());
+    GenApi::CIntegerPtr height_node = pDevice->GetNodeMap()->GetNode("Height");
+    height_node->SetValue(height_node->GetMax());
+    GenApi::CIntegerPtr channle_size = pDevice->GetNodeMap()->GetNode("DeviceStreamChannelPacketSize");
+    channle_size->SetValue(channle_size->GetMax());
+    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "PixelFormat", "BGR8");
+    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "ExposureAutoLimitAuto", "Off");
+    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "GainAuto", "Continuous");
+}
+
+void CameraNode::load_settings_from_file() {
+    std::string settings_file = name + ".txt";
+    RCLCPP_INFO(this->get_logger(), "Reading from file: %s", settings_file.c_str());
+    Arena::FeatureStream stream(pDevice->GetNodeMap());
+    stream.Write(settings_file.c_str());
+}
+
 
 void CameraNode::get_image(sensor_msgs::msg::Image::SharedPtr msg_image) {
     try{
