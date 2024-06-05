@@ -23,7 +23,6 @@ class CameraInfo : public rclcpp::Node {
     harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info;
 
     std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
-
     std::shared_ptr<rclcpp::ParameterCallbackHandle> param_int;
     std::shared_ptr<rclcpp::ParameterCallbackHandle> param_str;
     std::shared_ptr<rclcpp::ParameterCallbackHandle> param_float;

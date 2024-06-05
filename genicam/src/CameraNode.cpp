@@ -18,18 +18,47 @@ CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, u
     this->pDevice = pDevice;
     name = camera_name;
     mac = mac_address;
+    RCLCPP_INFO(this->get_logger(), "Camera node %s with MAC address %li", name.c_str(), mac);
+    
     save_pub_ = image_transport::create_publisher(this, "save_" + name);
     view_pub_ = image_transport::create_publisher(this, "view_" + name);
     inf_pub_ = image_transport::create_publisher(this, "inf_" + name);
-    RCLCPP_INFO(this->get_logger(), "Camera node created for camera %s with MAC address %li", camera_name.c_str(), mac_address);
+    
+    this->declare_parameter("exposure", 0.0);
+    this->declare_parameter("gain", 0.0);
+    param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
+    exposure = param_subscriber_->add_parameter_callback("param_int", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
+    gain = param_subscriber_->add_parameter_callback("param_float", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
+
     trigger = this->create_subscription<std_msgs::msg::Int16>("trigger_" + name, 1, std::bind(&CameraNode::topic_trigger, this, std::placeholders::_1));
     service = this->create_service<trigg>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
+    
     init_cameras();
 }
 
 CameraNode::~CameraNode() {
     RCLCPP_INFO(this->get_logger(), "Destroying camera node for camera %s with MAC address %li", name.c_str(), mac);
     pDevice->StopStream();
+}
+
+void CameraNode::param_callback(const rclcpp::Parameter & p) {
+    auto name = p.get_name();
+    if (p.get_type_name() == "string") {
+        auto val = p.get_parameter_value().get<std::string>();
+    } else if (p.get_type_name() == "integer") {
+        auto val = p.get_parameter_value().get<int>();
+    } else if (p.get_type_name() == "double") {
+        auto val = p.get_parameter_value().get<float>();
+        if (name == "exposure") {
+            GenApi::CFloatPtr p_exposure = pDevice->GetNodeMap()->GetNode("ExposureTime");
+            p_exposure->SetValue(val);
+        } else if (name == "gain") {
+            GenApi::CFloatPtr p_gain = pDevice->GetNodeMap()->GetNode("Gain");
+            p_gain->SetValue(val);
+        }
+    } else if (p.get_type_name() == "bool") {
+        auto val = p.get_parameter_value().get<bool>();
+    }
 }
 
 void CameraNode::init_cameras() {
