@@ -16,9 +16,9 @@ CameraArray::CameraArray(harvester_interfaces::msg::CameraDeviceArray::SharedPtr
 
 
 void CameraArray::publishArrayInfo() {
-    // if (camera_info->cameras.empty()) {
-    //     return;
-    // }
+    if (camera_info->cameras.empty()) {
+        return;
+    }
     array_pub_->publish(*camera_info);
     std::vector<std::string> ids;
     for (const auto &camera : camera_info->cameras) {
@@ -44,9 +44,13 @@ CameraInfo::CameraInfo(harvester_interfaces::msg::CameraDeviceArray::SharedPtr c
 }
 
 void CameraInfo::paramCallback(const rclcpp::Parameter & p) {
-    RCLCPP_INFO(this->get_logger(), "Parameter \"%s\" of type %s", p.get_name().c_str(), p.get_type_name().c_str());
-    // camera_info->cameras[0].id = p.as_string();
-    // RCLCPP_INFO(this->get_logger(), "Id: %s", camera_info->cameras[0].id.c_str());
+    if (p.get_type_name() != "string") {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Parameter %s is not a string", p.get_name().c_str());
+        return;
+    }
+    harvester_interfaces::msg::CameraDevice camera_device = harvester_interfaces::msg::CameraDevice();
+    camera_device.id = p.get_parameter_value().get<std::string>();
+    camera_info->cameras.push_back(camera_device);
 }
 
 uint64_t CameraInfo::convert_mac(std::string mac) {
@@ -57,14 +61,14 @@ uint64_t CameraInfo::convert_mac(std::string mac) {
 void CameraInfo::updateCameraInfo() {
     Arena::ISystem* pSystem = nullptr;
     std::vector<std::pair<Arena::IDevice*, uint64_t>> vDevices = std::vector<std::pair<Arena::IDevice*, uint64_t>>();
-    harvester_interfaces::msg::CameraDeviceArray camera_array;
+    harvester_interfaces::msg::CameraDeviceArray camera_array = harvester_interfaces::msg::CameraDeviceArray();
 
     try {
         pSystem = Arena::OpenSystem();
         pSystem->UpdateDevices(1000);
         std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
         for (auto& deviceInfo : deviceInfos){
-            harvester_interfaces::msg::CameraDevice camera_device;
+            harvester_interfaces::msg::CameraDevice camera_device = harvester_interfaces::msg::CameraDevice();
             camera_device.model = deviceInfo.ModelName();
             camera_device.vendor = deviceInfo.VendorName();
             camera_device.serial = deviceInfo.SerialNumber();
@@ -87,7 +91,7 @@ void CameraInfo::updateCameraInfo() {
             camera_array.cameras.push_back(camera_device);   
         }
         Arena::CloseSystem(pSystem);
-        camera_info = std::make_shared<harvester_interfaces::msg::CameraDeviceArray>(camera_array);
+        *camera_info = camera_array;
 
     } catch(const std::exception& e) {
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", e.what());
@@ -103,12 +107,6 @@ int main(int argc, char **argv) {
 
     rclcpp::executors::MultiThreadedExecutor executor;
     harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info = std::make_shared<harvester_interfaces::msg::CameraDeviceArray>();
-
-    // harvester_interfaces::msg::CameraDeviceArray camera_array;
-    // harvester_interfaces::msg::CameraDevice camera_device;
-    // camera_device.id = "1";
-    // camera_array.cameras.push_back(camera_device);
-    // camera_info = std::make_shared<harvester_interfaces::msg::CameraDeviceArray>(camera_array);
 
     auto camera_info_node = std::make_shared<CameraInfo>(camera_info);
     auto camera_array_node = std::make_shared<CameraArray>(camera_info);
