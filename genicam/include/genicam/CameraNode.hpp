@@ -31,8 +31,8 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
 
         std::string name;
         uint64_t mac;
+        Arena::ISystem* pSystem;
         Arena::IDevice* pDevice;
-        bool has_device;
 
         std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
         std::shared_ptr<rclcpp::ParameterCallbackHandle> exposure;
@@ -42,17 +42,19 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool incom);
         CameraNode(std::string camera_name, uint64_t mac_address, bool incom);
         ~CameraNode();
-        int add_device(Arena::IDevice* const pDevice);
+        void add_device(Arena::IDevice* const pDevice);
+        void search_device(Arena::ISystem* const pSystem);
 
     private:
         void config_node();
-        void init_cameras();
+        void init_camera();
         void load_settings_from_func();
         void load_settings_from_file();
         sensor_msgs::msg::Image::SharedPtr get_image(int trigger_type);
         void topic_trigger(const std_msgs::msg::Int16::SharedPtr msg);
         void service_trigger(const std::shared_ptr<trigg::Request> request, std::shared_ptr<trigg::Response> response);
         void param_callback(const rclcpp::Parameter & p);
+        uint64_t convert_mac(std::string mac);
 
         // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
         // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);

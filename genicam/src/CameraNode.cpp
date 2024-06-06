@@ -22,7 +22,7 @@ CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, u
     mac = mac_address;
     
     config_node();
-    init_cameras();
+    init_camera();
 }
 
 CameraNode::CameraNode(std::string camera_name, uint64_t mac_address, bool incom = true) 
@@ -32,9 +32,32 @@ CameraNode::CameraNode(std::string camera_name, uint64_t mac_address, bool incom
     config_node();
 }
 
-int CameraNode::add_device(Arena::IDevice* const pDevice) {
+CameraNode::~CameraNode() {
+    RCLCPP_INFO(this->get_logger(), "Destroying camera node for camera %s with MAC address %li", name.c_str(), mac);
+    pDevice->StopStream();
+}
+
+void CameraNode::add_device(Arena::IDevice* const pDevice) {
     this->pDevice = pDevice;
-    init_cameras();
+    init_camera();
+}
+
+void CameraNode::search_device(Arena::ISystem* const pSystem) {
+    // try {
+    //     pSystem->UpdateDevices(1000);
+    //     std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
+    //     for (auto& deviceInfo : deviceInfos){
+    //         uint64_t mac = convert_mac(deviceInfo.MacAddressStr().c_str());
+    //         if (camset::by_mac.find(mac) != camset::by_mac.end()) {
+    //             this->pDevice = pSystem->CreateDevice(deviceInfo);
+    //         }
+    //     }
+    // } catch(const std::exception& e) {
+    //     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", e.what());
+    // } catch (GenICam::GenericException& ge) {
+    //     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
+    // }
+    // init_camera();
 }
 
 void CameraNode::config_node() {
@@ -54,11 +77,6 @@ void CameraNode::config_node() {
 
     trigger = this->create_subscription<std_msgs::msg::Int16>("trigger_" + name, 1, std::bind(&CameraNode::topic_trigger, this, std::placeholders::_1));
     service = this->create_service<trigg>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
-}
-
-CameraNode::~CameraNode() {
-    RCLCPP_INFO(this->get_logger(), "Destroying camera node for camera %s with MAC address %li", name.c_str(), mac);
-    pDevice->StopStream();
 }
 
 void CameraNode::param_callback(const rclcpp::Parameter & p) {
@@ -81,7 +99,7 @@ void CameraNode::param_callback(const rclcpp::Parameter & p) {
     }
 }
 
-void CameraNode::init_cameras() {
+void CameraNode::init_camera() {
     load_settings_from_func();
     load_settings_from_file();
 
@@ -189,6 +207,11 @@ void CameraNode::service_trigger(const std::shared_ptr<trigg::Request> request, 
     }
 }
 
+uint64_t CameraNode::convert_mac(std::string mac) {
+  mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
+  return strtoul(mac.c_str(), NULL, 16);
+}
+
 uint64_t convert_mac(std::string mac) {
   mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
   return strtoul(mac.c_str(), NULL, 16);
@@ -229,7 +252,7 @@ int main(int argc, char **argv) {
     for (auto& pDevice : vDevices) {
         std::string camera_name = camset::by_mac.at(pDevice.second).name;
         auto camera_node = std::make_shared<CameraNode>(camera_name, pDevice.second);
-        camera_node->add_device(pDevice.first);
+        camera_node->search_device(pSystem);
         camera_nodes.push_back(camera_node);
     }
 
