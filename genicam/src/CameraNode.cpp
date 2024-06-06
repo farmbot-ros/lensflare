@@ -6,6 +6,8 @@
 #include <harvester_interfaces/srv/trigger_camera.hpp>
 #include <std_msgs/msg/int16.hpp>
 
+#include <ament_index_cpp/get_package_share_directory.hpp>
+
 #include <genicam/CameraNode.hpp>
 #include <genicam/CameraSets.hpp>
 
@@ -33,8 +35,6 @@ CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, u
     trigger = this->create_subscription<std_msgs::msg::Int16>("trigger_" + name, 1, std::bind(&CameraNode::topic_trigger, this, std::placeholders::_1));
     service = this->create_service<trigg>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
     
-    flash_pub = this->create_publisher<std_msgs::msg::Bool>("flash_" + name, 1);
-
     init_cameras();
 }
 
@@ -65,13 +65,12 @@ void CameraNode::param_callback(const rclcpp::Parameter & p) {
 
 void CameraNode::init_cameras() {
     load_settings_from_func();
+    load_settings_from_file();
 
     Arena::SetNodeValue<bool>(pDevice->GetNodeMap(), "PtpEnable", true);
     Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "AcquisitionStartMode", "PTPSync");
     GenApi::CFloatPtr framerate = pDevice->GetNodeMap()->GetNode("AcquisitionFrameRate");
     framerate->SetValue(framerate->GetMax());
-    GenApi::CFloatPtr pPTPSyncFrameRate = pDevice->GetNodeMap()->GetNode("PTPSyncFrameRate");
-    pPTPSyncFrameRate->SetValue(7.0);
     GenApi::CIntegerPtr pStreamChannelPacketDelay = pDevice->GetNodeMap()->GetNode("GevSCPD");
     pStreamChannelPacketDelay->SetValue(camset::by_mac.at(mac).scpd);
     GenApi::CIntegerPtr pStreamChannelFrameTransmissionDelay = pDevice->GetNodeMap()->GetNode("GevSCFTD");
@@ -96,23 +95,18 @@ void CameraNode::load_settings_from_func() {
 }
 
 void CameraNode::load_settings_from_file() {
-    std::string settings_file = name + ".txt";
+    auto config_dir = ament_index_cpp::get_package_share_directory("genicam") + "/configs/";
+    std::string settings_file = config_dir + name + ".txt";
     RCLCPP_INFO(this->get_logger(), "Reading from file: %s", settings_file.c_str());
     Arena::FeatureStream stream(pDevice->GetNodeMap());
     stream.Write(settings_file.c_str());
 }
 
 
-void CameraNode::get_image(sensor_msgs::msg::Image::SharedPtr msg_image, int trigger_type) {
-    // if (trigger_type == 10 || trigger_type == 20 || trigger_type == 30 || trigger_type == 40){
-    //     get_image(msg_image, trigger_type);
-    //     std_msgs::msg::Bool flash_msg = std_msgs::msg::Bool();
-    //     flash_msg.data = true;
-    //     flash_pub->publish(flash_msg);
-    // }
-
+sensor_msgs::msg::Image::SharedPtr CameraNode::get_image(int trigger_type) {
+    sensor_msgs::msg::Image::SharedPtr msg_image = nullptr;
     try{
-        Arena::IImage* pImage = pDevice->GetImage(5000);
+        Arena::IImage* pImage = pDevice->GetImage(10000);
         if (pImage != nullptr) {
             cv::Mat image = cv::Mat((int)pImage->GetHeight(), (int)pImage->GetWidth(), CV_8UC3, (void *)pImage->GetData());
             std_msgs::msg::Header header;
@@ -123,53 +117,51 @@ void CameraNode::get_image(sensor_msgs::msg::Image::SharedPtr msg_image, int tri
     }
     catch (GenICam::GenericException& ge) {
         RCLCPP_WARN(this->get_logger(), "Warn: %s", ge.what());
-        return;
     }
+    return msg_image;
 }
 
 void CameraNode::topic_trigger(const std_msgs::msg::Int16::SharedPtr msg) {
-    sensor_msgs::msg::Image::SharedPtr msg_image = nullptr;
-    get_image(msg_image, msg->data);
+    sensor_msgs::msg::Image::SharedPtr msg_image = get_image(msg->data);
 
     if (msg_image == nullptr) {
         RCLCPP_WARN(this->get_logger(), "No image received");
-        return;
-    } else if (msg->data == 1) {
+    } else if (msg->data == 1 || msg->data == 10) {
         save_pub_.publish(msg_image);
         RCLCPP_INFO(this->get_logger(), "Image saved");
-    } else if (msg->data == 2) {
+    } else if (msg->data == 2 || msg->data == 20) {
         view_pub_.publish(msg_image);
         RCLCPP_INFO(this->get_logger(), "Image shown");
-    } else if (msg->data == 3) {
+    } else if (msg->data == 3 || msg->data == 30) {
         inf_pub_.publish(msg_image);
         save_pub_.publish(msg_image);
-    } else if (msg->data == 4) {
+    } else if (msg->data == 4 || msg->data == 40) {
         inf_pub_.publish(msg_image);
     } else {
         RCLCPP_WARN(this->get_logger(), "Invalid trigger value %d", msg->data);
     }
 }
 void CameraNode::service_trigger(const std::shared_ptr<trigg::Request> request, std::shared_ptr<trigg::Response> response) {
-    sensor_msgs::msg::Image::SharedPtr msg_image = nullptr;
+    sensor_msgs::msg::Image::SharedPtr msg_image = get_image(request->type);
 
     if (msg_image == nullptr) {
         response->success = false;
         response->status = "No image received";
         return;
-    } else if (request->type == 1) {
+    } else if (request->type == 1 || request->type == 10) {
         save_pub_.publish(msg_image);
         response->success = true;
         response->status = "Image saved";
-    } else if (request->type == 2) {
+    } else if (request->type == 2 || request->type == 20) {
         view_pub_.publish(msg_image);
         response->success = true;
         response->status = "Image shown";
-    } else if (request->type == 3) {
+    } else if (request->type == 3 || request->type == 30) {
         inf_pub_.publish(msg_image);
         save_pub_.publish(msg_image);
         response->success = true;
-        response->status = "Image saved and shown";
-    } else if (request->type == 4) {
+        response->status = "Image saved and sent to inference";
+    } else if (request->type == 4 || request->type == 40) {
         inf_pub_.publish(msg_image);
         response->success = true;
         response->status = "Image sent to inference";

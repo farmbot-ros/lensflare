@@ -35,7 +35,7 @@ class CameraNode : public rclcpp::Node {
         void init_cameras();
         void load_settings_from_func();
         void load_settings_from_file();
-        void get_image(sensor_msgs::msg::Image::SharedPtr msg_image, int trigger_type);
+        sensor_msgs::msg::Image::SharedPtr get_image(int trigger_type);
         void topic_trigger(const std_msgs::msg::Int16::SharedPtr msg);
         void service_trigger(const std::shared_ptr<trigg::Request> request, std::shared_ptr<trigg::Response> response);
         void param_callback(const rclcpp::Parameter & p);
