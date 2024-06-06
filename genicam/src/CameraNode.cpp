@@ -1,7 +1,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <cv_bridge/cv_bridge.h>
-#include <image_transport/image_transport.hpp>
 #include <opencv2/opencv.hpp>
 #include <harvester_interfaces/srv/trigger_camera.hpp>
 #include <std_msgs/msg/int16.hpp>
@@ -16,15 +15,19 @@
 #include <GenICam.h>
 
 
-CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address) : Node("camera_" + camera_name) {
+CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool incom = true) 
+: rclcpp_lifecycle::LifecycleNode("camera_" + camera_name, rclcpp::NodeOptions().use_intra_process_comms(incom)) {
     this->pDevice = pDevice;
     name = camera_name;
     mac = mac_address;
     RCLCPP_INFO(this->get_logger(), "Camera node %s with MAC address %li", name.c_str(), mac);
     
-    save_pub_ = image_transport::create_publisher(this, "save_" + name);
-    view_pub_ = image_transport::create_publisher(this, "view_" + name);
-    inf_pub_ = image_transport::create_publisher(this, "inf_" + name);
+    // save_pub_ = image_transport::create_publisher(this, "save_" + name);
+    save_pub_ = this->create_publisher<sensor_msgs::msg::Image>("save_" + name, 10);
+    // view_pub_ = image_transport::create_publisher(this, "view_" + name);
+    view_pub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
+    // inf_pub_ = image_transport::create_publisher(this, "inf_" + name);
+    inf_pub_ = this->create_publisher<sensor_msgs::msg::Image>("inf_" + name, 10);
     
     this->declare_parameter("exposure", 0.0);
     this->declare_parameter("gain", 0.0);
@@ -127,16 +130,16 @@ void CameraNode::topic_trigger(const std_msgs::msg::Int16::SharedPtr msg) {
     if (msg_image == nullptr) {
         RCLCPP_WARN(this->get_logger(), "No image received");
     } else if (msg->data == 1 || msg->data == 10) {
-        save_pub_.publish(msg_image);
+        save_pub_->publish(*msg_image);
         RCLCPP_INFO(this->get_logger(), "Image saved");
     } else if (msg->data == 2 || msg->data == 20) {
-        view_pub_.publish(msg_image);
+        view_pub_->publish(*msg_image);
         RCLCPP_INFO(this->get_logger(), "Image shown");
     } else if (msg->data == 3 || msg->data == 30) {
-        inf_pub_.publish(msg_image);
-        save_pub_.publish(msg_image);
+        inf_pub_->publish(*msg_image);
+        save_pub_->publish(*msg_image);
     } else if (msg->data == 4 || msg->data == 40) {
-        inf_pub_.publish(msg_image);
+        inf_pub_->publish(*msg_image);
     } else {
         RCLCPP_WARN(this->get_logger(), "Invalid trigger value %d", msg->data);
     }
@@ -149,20 +152,20 @@ void CameraNode::service_trigger(const std::shared_ptr<trigg::Request> request, 
         response->status = "No image received";
         return;
     } else if (request->type == 1 || request->type == 10) {
-        save_pub_.publish(msg_image);
+        save_pub_->publish(*msg_image);
         response->success = true;
         response->status = "Image saved";
     } else if (request->type == 2 || request->type == 20) {
-        view_pub_.publish(msg_image);
+        view_pub_->publish(*msg_image);
         response->success = true;
         response->status = "Image shown";
     } else if (request->type == 3 || request->type == 30) {
-        inf_pub_.publish(msg_image);
-        save_pub_.publish(msg_image);
+        inf_pub_->publish(*msg_image);
+        save_pub_->publish(*msg_image);
         response->success = true;
         response->status = "Image saved and sent to inference";
     } else if (request->type == 4 || request->type == 40) {
-        inf_pub_.publish(msg_image);
+        inf_pub_->publish(*msg_image);
         response->success = true;
         response->status = "Image sent to inference";
     } else {
@@ -215,7 +218,7 @@ int main(int argc, char **argv) {
     }
 
     for (auto& camera_node : camera_nodes) {
-        executor.add_node(camera_node);
+        executor.add_node(camera_node->get_node_base_interface());
     }
 
     try {
@@ -229,7 +232,7 @@ int main(int argc, char **argv) {
     }
 
     for (auto& camera_node : camera_nodes) {
-        executor.remove_node(camera_node);
+        executor.remove_node(camera_node->get_node_base_interface());
     }
 
     Arena::CloseSystem(pSystem);

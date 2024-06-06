@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <image_transport/image_transport.hpp>
 #include <harvester_interfaces/srv/trigger_camera.hpp>
@@ -9,13 +10,19 @@
 
 #include <ArenaApi.h>
 
-class CameraNode : public rclcpp::Node {
+class CameraNode : public rclcpp_lifecycle::LifecycleNode {
     private:
         using trigg = harvester_interfaces::srv::TriggerCamera;
-        image_transport::Publisher save_pub_;
-        image_transport::Publisher view_pub_;
-        image_transport::Publisher inf_pub_;
-        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr flash_pub;
+        using lni = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface;
+
+        // image_transport::Publisher save_pub_;
+        // image_transport::Publisher view_pub_;
+        // image_transport::Publisher inf_pub_;
+        
+        rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr save_pub_;
+        rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr view_pub_;
+        rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr inf_pub_;
+
         rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr trigger;
         rclcpp::Service<trigg>::SharedPtr service;
 
@@ -28,7 +35,7 @@ class CameraNode : public rclcpp::Node {
         std::shared_ptr<rclcpp::ParameterCallbackHandle> gain;
 
     public:
-        CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address);
+        CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool incom);
         ~CameraNode();
 
     private:
@@ -39,4 +46,10 @@ class CameraNode : public rclcpp::Node {
         void topic_trigger(const std_msgs::msg::Int16::SharedPtr msg);
         void service_trigger(const std::shared_ptr<trigg::Request> request, std::shared_ptr<trigg::Response> response);
         void param_callback(const rclcpp::Parameter & p);
+
+        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
+        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
+        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
+        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
+        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
 };
