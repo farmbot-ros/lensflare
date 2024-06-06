@@ -5,6 +5,9 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <image_transport/image_transport.hpp>
 #include <harvester_interfaces/srv/trigger_camera.hpp>
+#include <harvester_interfaces/srv/create_camera.hpp>
+#include <harvester_interfaces/msg/camera_device.hpp>
+#include <harvester_interfaces/msg/camera_device_array.hpp>
 #include <std_msgs/msg/int16.hpp>
 #include <std_msgs/msg/bool.hpp>
 
@@ -29,6 +32,7 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         std::string name;
         uint64_t mac;
         Arena::IDevice* pDevice;
+        bool has_device;
 
         std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
         std::shared_ptr<rclcpp::ParameterCallbackHandle> exposure;
@@ -36,9 +40,12 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
 
     public:
         CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool incom);
+        CameraNode(std::string camera_name, uint64_t mac_address, bool incom);
         ~CameraNode();
+        int add_device(Arena::IDevice* const pDevice);
 
     private:
+        void config_node();
         void init_cameras();
         void load_settings_from_func();
         void load_settings_from_file();

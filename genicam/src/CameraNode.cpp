@@ -20,8 +20,25 @@ CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, u
     this->pDevice = pDevice;
     name = camera_name;
     mac = mac_address;
-    RCLCPP_INFO(this->get_logger(), "Camera node %s with MAC address %li", name.c_str(), mac);
     
+    config_node();
+    init_cameras();
+}
+
+CameraNode::CameraNode(std::string camera_name, uint64_t mac_address, bool incom = true) 
+: rclcpp_lifecycle::LifecycleNode("camera_" + camera_name, rclcpp::NodeOptions().use_intra_process_comms(incom)) {
+    name = camera_name;
+    mac = mac_address;
+    config_node();
+}
+
+int CameraNode::add_device(Arena::IDevice* const pDevice) {
+    this->pDevice = pDevice;
+    init_cameras();
+}
+
+void CameraNode::config_node() {
+    RCLCPP_INFO(this->get_logger(), "Camera node %s with MAC address %li", name.c_str(), mac);
     // save_pub_ = image_transport::create_publisher(this, "save_" + name);
     save_pub_ = this->create_publisher<sensor_msgs::msg::Image>("save_" + name, 10);
     // view_pub_ = image_transport::create_publisher(this, "view_" + name);
@@ -37,8 +54,6 @@ CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, u
 
     trigger = this->create_subscription<std_msgs::msg::Int16>("trigger_" + name, 1, std::bind(&CameraNode::topic_trigger, this, std::placeholders::_1));
     service = this->create_service<trigg>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
-    
-    init_cameras();
 }
 
 CameraNode::~CameraNode() {
@@ -213,7 +228,8 @@ int main(int argc, char **argv) {
     std::vector<std::shared_ptr<CameraNode>> camera_nodes;
     for (auto& pDevice : vDevices) {
         std::string camera_name = camset::by_mac.at(pDevice.second).name;
-        auto camera_node = std::make_shared<CameraNode>(pDevice.first, camera_name, pDevice.second);
+        auto camera_node = std::make_shared<CameraNode>(camera_name, pDevice.second);
+        camera_node->add_device(pDevice.first);
         camera_nodes.push_back(camera_node);
     }
 
