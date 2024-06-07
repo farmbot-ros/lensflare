@@ -22,7 +22,7 @@ namespace camset {
         double scftd;           // StreamChannelFrameTransmissionDelay
     };
 
-    std::unordered_map<uint64_t, Data> by_mac = {
+    inline std::unordered_map<uint64_t, Data> by_mac = {
         {30853686642969, {c_left,     "7",   "9b",   521 * EXP,    30 * GAIN,   1,   240000,    0 * 80000}},
         {30853686643065, {c_left,     "1",   "9a",   521 * EXP,    30 * GAIN,   1,   240000,    1 * 80000}},
         {30853686646563, {c_left,     "2",   "9c",   521 * EXP,    30 * GAIN,   1,   240000,    2 * 80000}},
@@ -44,7 +44,7 @@ namespace camset {
     };
 
 
-    uint64_t convert_mac(std::string mac) {
+    inline uint64_t convert_mac(std::string mac) {
         mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
         return strtoul(mac.c_str(), NULL, 16);
     }
