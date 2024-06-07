@@ -42,4 +42,11 @@ namespace camset {
         {30853686650366, {c_center,   "7",   "11b",  498.0,        15 * GAIN,   0,   240000,    0 * 80000}}, // directly
         {30853686650497, {c_center,   "7",   "11a",  498.0,        15 * GAIN,   0,   240000,    0 * 80000}}  // directly
     };
+
+
+    uint64_t convert_mac(std::string mac) {
+        mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
+        return strtoul(mac.c_str(), NULL, 16);
+    }
+
 }

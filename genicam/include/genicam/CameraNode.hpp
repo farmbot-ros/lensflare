@@ -11,6 +11,8 @@
 #include <std_msgs/msg/int16.hpp>
 #include <std_msgs/msg/bool.hpp>
 
+#include <genicam/CameraSets.hpp>
+
 #include <ArenaApi.h>
 
 class CameraNode : public rclcpp_lifecycle::LifecycleNode {
@@ -40,9 +42,9 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         std::shared_ptr<rclcpp::ParameterCallbackHandle> gain;
 
     public:
+        CameraNode(std::string camera_name, uint64_t mac_address, bool init);
         CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool init);
         CameraNode(Arena::ISystem* const pSystem, std::string camera_name, uint64_t mac_address, bool init);
-        CameraNode(std::string camera_name, uint64_t mac_address, bool init);
         void add_device(Arena::IDevice* const pDevice);
         void add_system(Arena::ISystem* const pSystem);
         ~CameraNode();
@@ -56,7 +58,6 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         void topic_trigger(const std_msgs::msg::Int16::SharedPtr msg);
         void service_trigger(const std::shared_ptr<trigg::Request> request, std::shared_ptr<trigg::Response> response);
         void param_callback(const rclcpp::Parameter & p);
-        uint64_t convert_mac(std::string mac);
 
         lni::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
         lni::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);

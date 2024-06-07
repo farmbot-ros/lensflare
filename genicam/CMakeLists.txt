@@ -66,6 +66,7 @@ add_executable(camera_info
 )
 
 add_executable(camera_manager
+  src/CameraNode.cpp
   src/CameraManager.cpp
 )
 

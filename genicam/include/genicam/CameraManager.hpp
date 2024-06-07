@@ -10,6 +10,9 @@
 #include <std_msgs/msg/int16.hpp>
 #include <std_msgs/msg/bool.hpp>
 
+#include <genicam/CameraNode.hpp>
+// #include <genicam/CameraSets.hpp>
+
 #include <ArenaApi.h>
 
 class CameraManager : public rclcpp::Node {
@@ -18,13 +21,7 @@ class CameraManager : public rclcpp::Node {
         harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info;
         Arena::ISystem* pSystem = nullptr;
         std::vector<std::pair<Arena::IDevice*, uint64_t>> vDevices;
-        std::vector<std::shared_ptr<CameraNode>> camera_nodes;
-
     public:
         CameraManager();
         ~CameraManager();
-
-    private:
-        void get_cameras();
-        int run_cameras();
 };

@@ -11,7 +11,6 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 #include <genicam/CameraNode.hpp>
-#include <genicam/CameraSets.hpp>
 
 
 #include <ArenaApi.h>
@@ -39,7 +38,7 @@ CameraNode::CameraNode(Arena::ISystem* const pSystem, std::string camera_name, u
         pSystem->UpdateDevices(1000);
         std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
         for (auto& deviceInfo : deviceInfos){
-            uint64_t mac = convert_mac(deviceInfo.MacAddressStr().c_str());
+            uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
             if (mac == this->mac) {
                 this->pDevice = pSystem->CreateDevice(deviceInfo);
             }
@@ -79,7 +78,7 @@ void CameraNode::add_system(Arena::ISystem* const pSystem) {
         pSystem->UpdateDevices(1000);
         std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
         for (auto& deviceInfo : deviceInfos){
-            uint64_t mac = convert_mac(deviceInfo.MacAddressStr().c_str());
+            uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
             if (mac == this->mac) {
                 this->pDevice = pSystem->CreateDevice(deviceInfo);
             }
@@ -255,16 +254,6 @@ void CameraNode::service_trigger(const std::shared_ptr<trigg::Request> request, 
     }
 }
 
-uint64_t CameraNode::convert_mac(std::string mac) {
-  mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
-  return strtoul(mac.c_str(), NULL, 16);
-}
-
-uint64_t convert_mac(std::string mac) {
-  mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
-  return strtoul(mac.c_str(), NULL, 16);
-}
-
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
@@ -278,7 +267,7 @@ int main(int argc, char **argv) {
         std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
         for (auto& deviceInfo : deviceInfos){
 			Arena::IDevice* pDevice;
-            uint64_t mac = convert_mac(deviceInfo.MacAddressStr().c_str());
+            uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
             if (camset::by_mac.find(mac) != camset::by_mac.end()) {
                 vDevices.push_back(std::make_pair(pDevice, mac));
             }
