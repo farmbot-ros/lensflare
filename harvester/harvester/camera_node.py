@@ -6,6 +6,7 @@ import cv2
 from cv_bridge import CvBridge
 import time
 from harvester_interfaces.msg import CameraDevice, CameraDeviceArray
+from harvester_interfaces.srv import TriggerCamera
 from ament_index_python.packages import get_package_share_directory
 
 import socket
@@ -68,12 +69,15 @@ class CameraNode(Node):
         self.save_pub = self.create_publisher(Image, f'save_{self.name}', 1)
         self.view_pub = self.create_publisher(Image, f'view_{self.name}', 10)
         self.inf_pub = self.create_publisher(Image, f'inf_{self.name}', 1)
-
         self.trigger_pub = self.create_publisher(Bool, f'flash_{self.name}', 10)
+
         # subscribers
         self.camera_trigger = self.create_subscription(Int16, f'trigger_{self.name}', self.callback, 10)
         self.create_subscription(Float32, f'set_gain_{self.name}', self.set_camera_gain, 1)
         self.create_subscription(Float32, f'set_exp_{self.name}', self.set_camera_exp, 1)
+
+        # service
+        self.camera_service = self.create_service(TriggerCamera, f'camtrig_{self.name}', self.service_trigger)
         
         self.buffer_bytes_per_pixel = None
         self.time_now = 0
@@ -215,6 +219,54 @@ class CameraNode(Node):
             self.inf_pub.publish(image_msg)
         print(f"Camera: {self.name} frame published at: {msg.data}")
         self.device.requeue_buffer(buffer)
+
+    def service_trigger(self, request, response):
+        if request.type == 10 or request.type == 20 or request.type == 30 or request.type == 40:
+            flash_msg = Bool()
+            flash_msg.data = True
+            self.trigger_pub.publish(flash_msg)
+
+        print(self.timer)
+        time.sleep(self.timer)
+        
+        buffer = self.device.get_buffer()
+
+        if self.buffer_bytes_per_pixel is None:
+            self.image_width = buffer.width
+            self.image_height = buffer.height
+            self.buffer_bytes_per_pixel = int(len(buffer.data)/(self.image_width * self.image_height))
+        array = (ctypes.c_ubyte * (self.num_channels  * self.image_width * self.image_height)).from_address(ctypes.addressof(buffer.pbytes))
+        npndarray = np.ctypeslib.as_array(array).reshape(self.image_height, self.image_width, self.num_channels)
+        
+        image_msg = self.bridge.cv2_to_imgmsg(npndarray) 
+        image_msg.header.stamp = self.get_clock().now().to_msg()
+
+        if image_msg == None:
+            response.success = False
+            response.status = "No image received"
+        elif request.type == 1 or request.type == 10:
+            self.save_pub.publish(image_msg)
+            response.success = True
+            response.status = "Image saved"
+        elif request.type == 2 or request.type == 20:
+            self.view_pub.publish(image_msg)
+            response.success = True
+            response.status = "Image shown"
+        elif request.type == 3 or request.type == 30:
+            self.save_pub.publish(image_msg)
+            self.inf_pub.publish(image_msg)
+            response.success = True
+            response.status = "Image saved and sent to inference"
+        elif request.type == 4 or request.type == 40:
+            self.inf_pub.publish(image_msg)
+            response.success = True
+            response.status = "Image sent to inference"
+        else:
+            response.success = False
+            response.status = f"Invalid trigger value: {request.type}"
+
+        self.device.requeue_buffer(buffer)
+        return response
 
 
     def set_camera_exp(self, msg):
