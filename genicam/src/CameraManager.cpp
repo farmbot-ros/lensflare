@@ -29,8 +29,8 @@ CameraManager::CameraManager() : Node("camera_manager") {
         RCLCPP_ERROR(this->get_logger(), "Error: %s", ge.what());
     }
 
-    get_cameras();
-    run_cameras();
+    // get_cameras();
+    // run_cameras();
 }
 
 CameraManager::~CameraManager() {
@@ -69,12 +69,12 @@ int CameraManager::run_cameras() {
         return 1;
     }
     
-    for (auto& pDevice : vDevices) {
-        std::string camera_name = camset::by_mac.at(pDevice.second).name;
-        auto camera_node = std::make_shared<CameraNode>(camera_name, pDevice.second);
-        camera_node->add_device(pDevice.first);
-        camera_nodes.push_back(camera_node);
-    }
+    // for (auto& pDevice : vDevices) {
+    //     std::string camera_name = camset::by_mac.at(pDevice.second).name;
+    //     auto camera_node = std::make_shared<CameraNode>(camera_name, pDevice.second);
+    //     camera_node->add_device(pDevice.first);
+    //     camera_nodes.push_back(camera_node);
+    // }
 
     for (auto& camera_node : camera_nodes) {
         executor.add_node(camera_node->get_node_base_interface());
@@ -85,6 +85,7 @@ int CameraManager::run_cameras() {
     //         executor.spin();
     //     }
     // });
+    return 0;
 }
 
 int main(int argc, char **argv) {

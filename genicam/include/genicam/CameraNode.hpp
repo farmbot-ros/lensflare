@@ -59,7 +59,7 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         uint64_t convert_mac(std::string mac);
 
         lni::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
-        // lni::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
         // lni::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
         // lni::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
         // lni::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
