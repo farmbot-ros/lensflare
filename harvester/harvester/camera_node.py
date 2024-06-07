@@ -59,6 +59,7 @@ class CameraNode(Node):
     def __init__(self, name, mac, device_infos):
         self.mac = mac
         self.name = name
+        self.timer = 2
         self.device_infos = device_infos
         self.bridge = CvBridge()
         super().__init__(f'camera_{self.name}_node')
@@ -147,9 +148,11 @@ class CameraNode(Node):
         nodemap.get_node("GainAutoUpperLimit").value = float(BY_MAC[self.mac_add][4])
         
         nodemap.get_node("PtpEnable").value = True
+        # print(nodemap.get_node("PtpStatus"))
         nodemap.get_node("AcquisitionStartMode").value = "PTPSync"
         nodemap.get_node("AcquisitionFrameRate").value = nodemap.get_node("AcquisitionFrameRate").max
-        nodemap.get_node("PTPSyncFrameRate").value = 7.0
+        print(nodemap.get_node("AcquisitionFrameRate"))
+        # nodemap.get_node("PTPSyncFrameRate").value = 7.0
 
         nodemap.get_node("GevSCPD").value = BY_MAC[self.mac_add][6]
         nodemap.get_node("GevSCFTD").value = BY_MAC[self.mac_add][7]
@@ -178,13 +181,19 @@ class CameraNode(Node):
 
     
     def callback(self, msg):
+        # time1 = time.time()
         if msg.data == 10 or msg.data == 20 or msg.data == 30 or msg.data == 40:
             flash_msg = Bool()
             flash_msg.data = True
             self.trigger_pub.publish(flash_msg)
-        time.sleep(0.8)
-            
+        # time2 = time.time()
+        print(self.timer)
+        time.sleep(self.timer)
+        # self.timer = self.timer + 0.1
+        
         buffer = self.device.get_buffer()
+        #time dif
+        # print(f"Time in seconds: {time2 - time1}")
         if self.buffer_bytes_per_pixel is None:
             self.image_width = buffer.width
             self.image_height = buffer.height

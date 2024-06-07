@@ -38,6 +38,7 @@ BY_MAC = {
     30853686643056: [IP_LIGHT[2],   6,   "9e",   521*EXP,  30],
     30853686646554: [IP_LIGHT[1],   6,   "7a",   521*EXP,  30],
     30853686652294: [IP_LIGHT[1],   1,   "7b",   521*EXP,  30],
+    30853686652294: [IP_LIGHT[2],   1,   "7b",   521*EXP,  30],
     30853686445113: [IP_LIGHT[1],   5,   "7c",   521*EXP,  30],
     30853686646528: [IP_LIGHT[1],   2,   "7d",   521*EXP,  30],
     30853686653140: [IP_LIGHT[1],   3,   "7e",   521*EXP,  30],
@@ -73,7 +74,11 @@ class FlashNode(Node):
     def flash_callback(self, msg, ip, channel):
         if msg.data:
             print(f"light controller ip: {ip}, channel number: {channel}")
-            self.pulse(ip, channel)
+            for i in range(6):
+                self.pulse(ip, channel)
+                time.sleep(0.3)
+
+
 
 
 
