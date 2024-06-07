@@ -19,6 +19,7 @@ class CameraManager : public rclcpp::Node {
     private:
         rclcpp::executors::MultiThreadedExecutor executor;
         harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_info;
+        rclcpp::Client<harvester_interfaces::srv::CreateCamera>::SharedPtr camera_get;
         Arena::ISystem* pSystem = nullptr;
         std::vector<std::shared_ptr<CameraNode>> camera_nodes;
     public:
@@ -27,4 +28,5 @@ class CameraManager : public rclcpp::Node {
 
     private:
         void init_cameras();
+        void check_cameras();
 };

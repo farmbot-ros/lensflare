@@ -19,29 +19,26 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
     private:
         using trigg = harvester_interfaces::srv::TriggerCamera;
         using lni = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface;
-
         // image_transport::Publisher save_pub_;
         // image_transport::Publisher view_pub_;
         // image_transport::Publisher inf_pub_;
-        
         rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr save_pub_;
         rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr view_pub_;
         rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr inf_pub_;
-
         rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr trigger;
         rclcpp::Service<trigg>::SharedPtr service;
-
-        std::string name;
-        uint64_t mac;
-
-        Arena::ISystem* pSystem;
-        Arena::IDevice* pDevice;
 
         std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
         std::shared_ptr<rclcpp::ParameterCallbackHandle> exposure;
         std::shared_ptr<rclcpp::ParameterCallbackHandle> gain;
 
+        Arena::ISystem* pSystem;
+        Arena::IDevice* pDevice;
+
     public:
+        std::string name;
+        uint64_t mac;
+
         CameraNode(std::string camera_name, uint64_t mac_address, bool init);
         CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool init);
         CameraNode(Arena::ISystem* const pSystem, std::string camera_name, uint64_t mac_address, bool init);
