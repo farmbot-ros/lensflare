@@ -31,6 +31,7 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
 
         std::string name;
         uint64_t mac;
+
         Arena::ISystem* pSystem;
         Arena::IDevice* pDevice;
 
@@ -39,15 +40,16 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         std::shared_ptr<rclcpp::ParameterCallbackHandle> gain;
 
     public:
-        CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool incom);
-        CameraNode(std::string camera_name, uint64_t mac_address, bool incom);
-        ~CameraNode();
+        CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool init);
+        CameraNode(Arena::ISystem* const pSystem, std::string camera_name, uint64_t mac_address, bool init);
+        CameraNode(std::string camera_name, uint64_t mac_address, bool init);
         void add_device(Arena::IDevice* const pDevice);
-        void search_device(Arena::ISystem* const pSystem);
+        void add_system(Arena::ISystem* const pSystem);
+        ~CameraNode();
 
     private:
-        void config_node();
-        void init_camera();
+        void config_node(bool trigger_topic);
+        void load_camera_settings();
         void load_settings_from_func();
         void load_settings_from_file();
         sensor_msgs::msg::Image::SharedPtr get_image(int trigger_type);
@@ -56,9 +58,10 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         void param_callback(const rclcpp::Parameter & p);
         uint64_t convert_mac(std::string mac);
 
-        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
-        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
-        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
-        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
-        // rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
+        // lni::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
+        // lni::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
+        // lni::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
+        // lni::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
+
 };
