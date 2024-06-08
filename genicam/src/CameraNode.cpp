@@ -17,41 +17,35 @@ using lni = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface;
 CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool init = true) 
 : rclcpp_lifecycle::LifecycleNode("camera_" + camera_name) {
     this->pDevice = pDevice;
+    this->has_device = true;
+    this->has_system = false;
     name = camera_name;
     mac = mac_address;
     if (init) {
         config_node(false);
-        load_camera_settings();
+        add_device(pDevice, false);
+        pDevice->StartStream();
     }
 }
 
 CameraNode::CameraNode(Arena::ISystem* const pSystem, std::string camera_name, uint64_t mac_address, bool init = true) 
 : rclcpp_lifecycle::LifecycleNode("camera_" + camera_name) {
     this->pSystem = pSystem;
+    this->has_system = true;
+    this->has_device = false;
     name = camera_name;
     mac = mac_address;
-    try {
-        pSystem->UpdateDevices(1000);
-        std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
-        for (auto& deviceInfo : deviceInfos){
-            uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
-            if (mac == this->mac) {
-                this->pDevice = pSystem->CreateDevice(deviceInfo);
-            }
-        }
-    } catch(const std::exception& e) {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", e.what());
-    } catch (GenICam::GenericException& ge) {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
-    }
     if (init) {
         config_node(false);
-        load_camera_settings();
+        add_system(pSystem, false);
+        pDevice->StartStream();
     }
 }
 
 CameraNode::CameraNode(std::string camera_name, uint64_t mac_address, bool init = true) 
 : rclcpp_lifecycle::LifecycleNode("camera_" + camera_name) {
+    this->has_system = false;
+    this->has_device = false;
     name = camera_name;
     mac = mac_address;
     if (init){
@@ -64,19 +58,25 @@ CameraNode::~CameraNode() {
     pDevice->StopStream();
 }
 
-void CameraNode::add_device(Arena::IDevice* const pDevice) {
+void CameraNode::add_device(Arena::IDevice* const pDevice, bool start_streaming = true) {
     this->pDevice = pDevice;
+    this->has_device = true;
     load_camera_settings();
+    if (start_streaming) {
+        pDevice->StartStream();
+    }
 }
 
-void CameraNode::add_system(Arena::ISystem* const pSystem) {
+void CameraNode::add_system(Arena::ISystem* const pSystem, bool start_streaming = false) {
+    this->pSystem = pSystem;
+    this->has_system = true;
     try {
         pSystem->UpdateDevices(1000);
         std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
         for (auto& deviceInfo : deviceInfos){
             uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
             if (mac == this->mac) {
-                this->pDevice = pSystem->CreateDevice(deviceInfo);
+                add_device(pSystem->CreateDevice(deviceInfo), start_streaming);
             }
         }
     } catch(const std::exception& e) {
@@ -84,7 +84,6 @@ void CameraNode::add_system(Arena::ISystem* const pSystem) {
     } catch (GenICam::GenericException& ge) {
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
     }
-    load_camera_settings();
 }
 
 void CameraNode::config_node(bool managed = false) {
@@ -98,18 +97,20 @@ void CameraNode::config_node(bool managed = false) {
         save_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("save_" + name, 10);
         view_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
         inf_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("inf_" + name, 10);
-        service = this->create_service<harvester_interfaces::srv::TriggerCamera>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
     } else {
         save_pub_ = this->create_publisher<sensor_msgs::msg::Image>("save_" + name, 10);
         view_pub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
         inf_pub_ = this->create_publisher<sensor_msgs::msg::Image>("inf_" + name, 10);
-        service = this->create_service<harvester_interfaces::srv::TriggerCamera>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
     }
+    service = this->create_service<harvester_interfaces::srv::TriggerCamera>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 lni::CallbackReturn CameraNode::on_configure(const rclcpp_lifecycle::State &state) {
     this->lifecycled = true;
     config_node(this->lifecycled);
+    if (!has_device) {
+        add_system(pSystem);
+    }
     return lni::CallbackReturn::SUCCESS;
 }
 
@@ -118,7 +119,7 @@ lni::CallbackReturn CameraNode::on_activate(const rclcpp_lifecycle::State &state
         RCLCPP_ERROR(this->get_logger(), "No device found for camera %s with MAC address %li", name.c_str(), mac);
         return lni::CallbackReturn::FAILURE;
     }
-    pDevice->StartStream();
+    // pDevice->StartStream();
     return lni::CallbackReturn::SUCCESS;
 }
 
@@ -166,8 +167,6 @@ void CameraNode::load_camera_settings() {
     pStreamChannelPacketDelay->SetValue(camset::by_mac.at(mac).scpd);
     GenApi::CIntegerPtr pStreamChannelFrameTransmissionDelay = pDevice->GetNodeMap()->GetNode("GevSCFTD");
     pStreamChannelFrameTransmissionDelay->SetValue(camset::by_mac.at(mac).scftd);
-
-    pDevice->StartStream();
 }
 
 void CameraNode::load_settings_from_func() {
@@ -280,7 +279,7 @@ int main(int argc, char **argv) {
         pSystem->UpdateDevices(1000);
         std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
         for (auto& deviceInfo : deviceInfos){
-			Arena::IDevice* pDevice = pSystem->CreateDevice(deviceInfo);
+			Arena::IDevice* pDevice;
             uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
             if (camset::by_mac.find(mac) != camset::by_mac.end()) {
                 vDevices.push_back(std::make_pair(pDevice, mac));
@@ -302,7 +301,7 @@ int main(int argc, char **argv) {
     std::vector<std::shared_ptr<CameraNode>> camera_nodes;
     for (auto& pDevice : vDevices) {
         std::string camera_name = camset::by_mac.at(pDevice.second).name;
-        auto camera_node = std::make_shared<CameraNode>(pDevice.first, camera_name, pDevice.second);
+        auto camera_node = std::make_shared<CameraNode>(pSystem, camera_name, pDevice.second);
         // camera_node->add_system(pSystem);
         // camera_node->add_device(pDevice.first);
         camera_nodes.push_back(camera_node);

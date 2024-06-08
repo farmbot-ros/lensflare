@@ -32,7 +32,9 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         std::shared_ptr<rclcpp::ParameterCallbackHandle> gain;
 
         Arena::ISystem* pSystem;
+        bool has_system;
         Arena::IDevice* pDevice;
+        bool has_device;
 
     public:
         std::string name;
@@ -42,10 +44,16 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         CameraNode(std::string camera_name, uint64_t mac_address, bool init);
         CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool init);
         CameraNode(Arena::ISystem* const pSystem, std::string camera_name, uint64_t mac_address, bool init);
-        void add_device(Arena::IDevice* const pDevice);
-        void add_system(Arena::ISystem* const pSystem);
+        void add_device(Arena::IDevice* const pDevice, bool start_streaming);
+        void add_system(Arena::ISystem* const pSystem, bool start_streaming);
         ~CameraNode();
 
+        lni::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
+    
     private:
         void config_node(bool managed);
         void load_camera_settings();
@@ -56,11 +64,4 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
             const std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Request> request, 
             std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Response> response);
         void param_callback(const rclcpp::Parameter & p);
-
-        lni::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
-        lni::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
-        lni::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
-        lni::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
-        lni::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
-
 };

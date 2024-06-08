@@ -78,9 +78,10 @@ else()
     src/CameraNode.cpp
   )
   ament_target_dependencies(camera_node ${ros_dependencies})
+  # target_link_options(camera_node PRIVATE -Wl,-e,main_cn)
   install(TARGETS
-    camera_node
     camera_info
+    camera_node
     DESTINATION lib/${PROJECT_NAME}
   )
 endif()

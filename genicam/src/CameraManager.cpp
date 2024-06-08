@@ -57,8 +57,10 @@ void CameraManager::check_cameras() {
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) == rclcpp::FutureReturnCode::SUCCESS) {
             if (result.get()->success) {
                 RCLCPP_INFO(this->get_logger(), "Camera %s is available", camera_node->name.c_str());
+                camera_node->on_configure(rclcpp_lifecycle::State());
+                camera_node->on_activate(rclcpp_lifecycle::State());
             } else {
-                RCLCPP_ERROR(this->get_logger(), "Camera %s is NOT", camera_node->name.c_str());
+                RCLCPP_WARN(this->get_logger(), "Camera %s is NOT", camera_node->name.c_str());
             }
         }
     }
