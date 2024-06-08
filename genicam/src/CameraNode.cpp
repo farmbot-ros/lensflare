@@ -1,17 +1,13 @@
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
 #include <rclcpp/rclcpp.hpp>
+#include <lifecycle_msgs/msg/state.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
-#include <harvester_interfaces/srv/trigger_camera.hpp>
 #include <std_msgs/msg/int16.hpp>
 
-#include <ament_index_cpp/get_package_share_directory.hpp>
-
 #include <genicam/CameraNode.hpp>
-
+#include <harvester_interfaces/srv/trigger_camera.hpp>
 
 #include <ArenaApi.h>
 #include <GenICam.h>
@@ -24,7 +20,7 @@ CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, u
     name = camera_name;
     mac = mac_address;
     if (init) {
-        config_node(true);
+        config_node(false);
         load_camera_settings();
     }
 }
@@ -49,7 +45,7 @@ CameraNode::CameraNode(Arena::ISystem* const pSystem, std::string camera_name, u
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
     }
     if (init) {
-        config_node(true);
+        config_node(false);
         load_camera_settings();
     }
 }
@@ -59,7 +55,7 @@ CameraNode::CameraNode(std::string camera_name, uint64_t mac_address, bool init 
     name = camera_name;
     mac = mac_address;
     if (init){
-        config_node(true);
+        config_node(false);
     }
 }
 
@@ -91,29 +87,29 @@ void CameraNode::add_system(Arena::ISystem* const pSystem) {
     load_camera_settings();
 }
 
-void CameraNode::config_node(bool trigger_topic = true) {
-    RCLCPP_INFO(this->get_logger(), "Camera node %s with MAC address %li", name.c_str(), mac);
-    // save_pub_ = image_transport::create_publisher(this, "save_" + name);
-    save_pub_ = this->create_publisher<sensor_msgs::msg::Image>("save_" + name, 10);
-    // view_pub_ = image_transport::create_publisher(this, "view_" + name);
-    view_pub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
-    // inf_pub_ = image_transport::create_publisher(this, "inf_" + name);
-    inf_pub_ = this->create_publisher<sensor_msgs::msg::Image>("inf_" + name, 10);
-    
+void CameraNode::config_node(bool managed = false) {
+    RCLCPP_INFO(this->get_logger(), "Camera node %s with MAC address %li configured", name.c_str(), mac);
     this->declare_parameter("exposure", 0.0);
     this->declare_parameter("gain", 0.0);
     param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
     exposure = param_subscriber_->add_parameter_callback("param_int", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
     gain = param_subscriber_->add_parameter_callback("param_float", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
-
-    if (trigger_topic) {
-        trigger = this->create_subscription<std_msgs::msg::Int16>("trigger_" + name, 1, std::bind(&CameraNode::topic_trigger, this, std::placeholders::_1));
+    if (managed) {
+        save_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("save_" + name, 10);
+        view_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
+        inf_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("inf_" + name, 10);
+        service = this->create_service<harvester_interfaces::srv::TriggerCamera>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
+    } else {
+        save_pub_ = this->create_publisher<sensor_msgs::msg::Image>("save_" + name, 10);
+        view_pub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
+        inf_pub_ = this->create_publisher<sensor_msgs::msg::Image>("inf_" + name, 10);
+        service = this->create_service<harvester_interfaces::srv::TriggerCamera>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
     }
-    service = this->create_service<trigg>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 lni::CallbackReturn CameraNode::on_configure(const rclcpp_lifecycle::State &state) {
-    config_node(false);
+    this->lifecycled = true;
+    config_node(this->lifecycled);
     return lni::CallbackReturn::SUCCESS;
 }
 
@@ -123,6 +119,18 @@ lni::CallbackReturn CameraNode::on_activate(const rclcpp_lifecycle::State &state
         return lni::CallbackReturn::FAILURE;
     }
     pDevice->StartStream();
+    return lni::CallbackReturn::SUCCESS;
+}
+
+lni::CallbackReturn CameraNode::on_deactivate(const rclcpp_lifecycle::State &state) {
+    return lni::CallbackReturn::SUCCESS;
+}
+
+lni::CallbackReturn CameraNode::on_cleanup(const rclcpp_lifecycle::State &state) {
+    return lni::CallbackReturn::SUCCESS;
+}
+
+lni::CallbackReturn CameraNode::on_shutdown(const rclcpp_lifecycle::State &state) {
     return lni::CallbackReturn::SUCCESS;
 }
 
@@ -204,48 +212,54 @@ sensor_msgs::msg::Image::SharedPtr CameraNode::get_image(int trigger_type) {
     return msg_image;
 }
 
-void CameraNode::topic_trigger(const std_msgs::msg::Int16::SharedPtr msg) {
-    sensor_msgs::msg::Image::SharedPtr msg_image = get_image(msg->data);
-
-    if (msg_image == nullptr) {
-        RCLCPP_WARN(this->get_logger(), "No image received");
-    } else if (msg->data == 1 || msg->data == 10) {
-        save_pub_->publish(*msg_image);
-        RCLCPP_INFO(this->get_logger(), "Image saved");
-    } else if (msg->data == 2 || msg->data == 20) {
-        view_pub_->publish(*msg_image);
-        RCLCPP_INFO(this->get_logger(), "Image shown");
-    } else if (msg->data == 3 || msg->data == 30) {
-        inf_pub_->publish(*msg_image);
-        save_pub_->publish(*msg_image);
-    } else if (msg->data == 4 || msg->data == 40) {
-        inf_pub_->publish(*msg_image);
-    } else {
-        RCLCPP_WARN(this->get_logger(), "Invalid trigger value %d", msg->data);
+void CameraNode::service_trigger(
+const std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Request> request, 
+std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Response> response) {
+    if (this->lifecycled == true){
+        if (this->get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+            RCLCPP_ERROR(this->get_logger(), "Camera %s is not active", name.c_str());
+            response->success = false;
+            response->status = "Camera is not active";
+            return;
+        }
     }
-}
-void CameraNode::service_trigger(const std::shared_ptr<trigg::Request> request, std::shared_ptr<trigg::Response> response) {
     sensor_msgs::msg::Image::SharedPtr msg_image = get_image(request->type);
-
     if (msg_image == nullptr) {
         response->success = false;
         response->status = "No image received";
         return;
     } else if (request->type == 1 || request->type == 10) {
-        save_pub_->publish(*msg_image);
+        if (this->lifecycled == true) {
+            save_lpub_->publish(*msg_image);
+        } else {
+            save_pub_->publish(*msg_image);
+        }
         response->success = true;
         response->status = "Image saved";
     } else if (request->type == 2 || request->type == 20) {
-        view_pub_->publish(*msg_image);
+        if (this->lifecycled == true) {
+            view_lpub_->publish(*msg_image);
+        } else {
+            view_pub_->publish(*msg_image);
+        }
         response->success = true;
         response->status = "Image shown";
     } else if (request->type == 3 || request->type == 30) {
-        inf_pub_->publish(*msg_image);
-        save_pub_->publish(*msg_image);
+        if (this->lifecycled == true) {
+            save_lpub_->publish(*msg_image);
+            inf_lpub_->publish(*msg_image);
+        } else {
+            save_pub_->publish(*msg_image);
+            inf_pub_->publish(*msg_image);
+        }
         response->success = true;
         response->status = "Image saved and sent to inference";
     } else if (request->type == 4 || request->type == 40) {
-        inf_pub_->publish(*msg_image);
+        if (this->lifecycled == true) {
+            inf_lpub_->publish(*msg_image);
+        } else {
+            inf_pub_->publish(*msg_image);
+        }
         response->success = true;
         response->status = "Image sent to inference";
     } else {
@@ -255,64 +269,64 @@ void CameraNode::service_trigger(const std::shared_ptr<trigg::Request> request, 
 }
 
 
-// int main(int argc, char **argv) {
-//     rclcpp::init(argc, argv);
-//     std::cout << "... GETTING CAMERAS ..." << std::endl;
-//     Arena::ISystem* pSystem = nullptr;
-//     std::vector<std::pair<Arena::IDevice*, uint64_t>> vDevices = std::vector<std::pair<Arena::IDevice*, uint64_t>>();
+int main(int argc, char **argv) {
+    rclcpp::init(argc, argv);
+    std::cout << "... GETTING CAMERAS ..." << std::endl;
+    Arena::ISystem* pSystem = nullptr;
+    std::vector<std::pair<Arena::IDevice*, uint64_t>> vDevices = std::vector<std::pair<Arena::IDevice*, uint64_t>>();
 
-//     try {
-//         pSystem = Arena::OpenSystem();
-//         pSystem->UpdateDevices(1000);
-//         std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
-//         for (auto& deviceInfo : deviceInfos){
-// 			Arena::IDevice* pDevice;
-//             uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
-//             if (camset::by_mac.find(mac) != camset::by_mac.end()) {
-//                 vDevices.push_back(std::make_pair(pDevice, mac));
-//             }
-// 		}
-//     } catch(const std::exception& e) {
-//         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", e.what());
-//     } catch (GenICam::GenericException& ge) {
-//         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
-//     }
+    try {
+        pSystem = Arena::OpenSystem();
+        pSystem->UpdateDevices(1000);
+        std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
+        for (auto& deviceInfo : deviceInfos){
+			Arena::IDevice* pDevice = pSystem->CreateDevice(deviceInfo);
+            uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
+            if (camset::by_mac.find(mac) != camset::by_mac.end()) {
+                vDevices.push_back(std::make_pair(pDevice, mac));
+            }
+		}
+    } catch(const std::exception& e) {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", e.what());
+    } catch (GenICam::GenericException& ge) {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
+    }
 
-//     if (vDevices.size() == 0) {
-//         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "No cameras found!, exiting...");
-//         exit(1);
-//     }
+    if (vDevices.size() == 0) {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "No cameras found!, exiting...");
+        exit(1);
+    }
             
-//     rclcpp::executors::MultiThreadedExecutor executor;
+    rclcpp::executors::MultiThreadedExecutor executor;
 
-//     std::vector<std::shared_ptr<CameraNode>> camera_nodes;
-//     for (auto& pDevice : vDevices) {
-//         std::string camera_name = camset::by_mac.at(pDevice.second).name;
-//         auto camera_node = std::make_shared<CameraNode>(pSystem, camera_name, pDevice.second);
-//         // camera_node->add_system(pSystem);
-//         // camera_node->add_device(pDevice.first);
-//         camera_nodes.push_back(camera_node);
-//     }
+    std::vector<std::shared_ptr<CameraNode>> camera_nodes;
+    for (auto& pDevice : vDevices) {
+        std::string camera_name = camset::by_mac.at(pDevice.second).name;
+        auto camera_node = std::make_shared<CameraNode>(pDevice.first, camera_name, pDevice.second);
+        // camera_node->add_system(pSystem);
+        // camera_node->add_device(pDevice.first);
+        camera_nodes.push_back(camera_node);
+    }
 
-//     for (auto& camera_node : camera_nodes) {
-//         executor.add_node(camera_node->get_node_base_interface());
-//     }
+    for (auto& camera_node : camera_nodes) {
+        executor.add_node(camera_node->get_node_base_interface());
+    }
 
-//     try {
-//         executor.spin();
-//     } catch (const std::exception &e) {
-//         std::cerr << "An error occurred: " << e.what() << std::endl;
-//     }
+    try {
+        executor.spin();
+    } catch (const std::exception &e) {
+        std::cerr << "An error occurred: " << e.what() << std::endl;
+    }
 
-//     for (auto& pDevice : vDevices) {
-//         pSystem->DestroyDevice(pDevice.first);
-//     }
+    for (auto& pDevice : vDevices) {
+        pSystem->DestroyDevice(pDevice.first);
+    }
 
-//     for (auto& camera_node : camera_nodes) {
-//         executor.remove_node(camera_node->get_node_base_interface());
-//     }
+    for (auto& camera_node : camera_nodes) {
+        executor.remove_node(camera_node->get_node_base_interface());
+    }
 
-//     Arena::CloseSystem(pSystem);
-//     rclcpp::shutdown();
-//     return 0;
-// }
+    Arena::CloseSystem(pSystem);
+    rclcpp::shutdown();
+    return 0;
+}

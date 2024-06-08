@@ -48,9 +48,8 @@ void CameraManager::check_cameras() {
         request->camera_name = camera_node->name;
 
 
-        if (!camera_get->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Service not available after waiting");
-            return;
+        while (!camera_get->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Service not available, please launch CameraInfo node");
         }
 
         auto result = camera_get->async_send_request(request);

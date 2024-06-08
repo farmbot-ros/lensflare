@@ -3,7 +3,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include <sensor_msgs/msg/image.hpp>
-#include <image_transport/image_transport.hpp>
 #include <harvester_interfaces/srv/trigger_camera.hpp>
 #include <harvester_interfaces/srv/create_camera.hpp>
 #include <harvester_interfaces/msg/camera_device.hpp>
@@ -17,16 +16,16 @@
 
 class CameraNode : public rclcpp_lifecycle::LifecycleNode {
     private:
-        using trigg = harvester_interfaces::srv::TriggerCamera;
         using lni = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface;
-        // image_transport::Publisher save_pub_;
-        // image_transport::Publisher view_pub_;
-        // image_transport::Publisher inf_pub_;
+        
+        rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Image>::SharedPtr save_lpub_;
         rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr save_pub_;
+        rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Image>::SharedPtr view_lpub_;
         rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr view_pub_;
+        rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Image>::SharedPtr inf_lpub_;
         rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr inf_pub_;
-        rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr trigger;
-        rclcpp::Service<trigg>::SharedPtr service;
+        
+        rclcpp::Service<harvester_interfaces::srv::TriggerCamera>::SharedPtr service;
 
         std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
         std::shared_ptr<rclcpp::ParameterCallbackHandle> exposure;
@@ -38,6 +37,7 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
     public:
         std::string name;
         uint64_t mac;
+        bool lifecycled;
 
         CameraNode(std::string camera_name, uint64_t mac_address, bool init);
         CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool init);
@@ -47,19 +47,20 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         ~CameraNode();
 
     private:
-        void config_node(bool trigger_topic);
+        void config_node(bool managed);
         void load_camera_settings();
         void load_settings_from_func();
         void load_settings_from_file();
         sensor_msgs::msg::Image::SharedPtr get_image(int trigger_type);
-        void topic_trigger(const std_msgs::msg::Int16::SharedPtr msg);
-        void service_trigger(const std::shared_ptr<trigg::Request> request, std::shared_ptr<trigg::Response> response);
+        void service_trigger(
+            const std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Request> request, 
+            std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Response> response);
         void param_callback(const rclcpp::Parameter & p);
 
         lni::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
         lni::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
-        // lni::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
-        // lni::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
-        // lni::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
 
 };
