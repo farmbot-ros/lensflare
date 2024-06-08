@@ -48,12 +48,6 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         void add_system(Arena::ISystem* const pSystem, bool start_streaming);
         ~CameraNode();
 
-        lni::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
-        lni::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
-        lni::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
-        lni::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
-        lni::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
-    
     private:
         void config_node(bool managed);
         void load_camera_settings();
@@ -64,4 +58,10 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
             const std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Request> request, 
             std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Response> response);
         void param_callback(const rclcpp::Parameter & p);
+
+        lni::CallbackReturn on_configure(const rclcpp_lifecycle::State & state);
+        lni::CallbackReturn on_activate(const rclcpp_lifecycle::State & state);
+        // lni::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & state);
+        // lni::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & state);
+        // lni::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
 };

@@ -21,6 +21,7 @@ CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, u
     this->has_system = false;
     name = camera_name;
     mac = mac_address;
+    RCLCPP_INFO(this->get_logger(), "Camera node for camera %s with MAC address %li is created", name.c_str(), mac);
     if (init) {
         config_node(false);
         add_device(pDevice, false);
@@ -35,6 +36,7 @@ CameraNode::CameraNode(Arena::ISystem* const pSystem, std::string camera_name, u
     this->has_device = false;
     name = camera_name;
     mac = mac_address;
+    RCLCPP_INFO(this->get_logger(), "Camera node for camera %s with MAC address %li is created", name.c_str(), mac);
     if (init) {
         config_node(false);
         add_system(pSystem, false);
@@ -48,6 +50,7 @@ CameraNode::CameraNode(std::string camera_name, uint64_t mac_address, bool init 
     this->has_device = false;
     name = camera_name;
     mac = mac_address;
+    RCLCPP_INFO(this->get_logger(), "Camera node for camera %s with MAC address %li is created", name.c_str(), mac);
     if (init){
         config_node(false);
     }
@@ -87,7 +90,6 @@ void CameraNode::add_system(Arena::ISystem* const pSystem, bool start_streaming 
 }
 
 void CameraNode::config_node(bool managed = false) {
-    RCLCPP_INFO(this->get_logger(), "Camera node %s with MAC address %li configured", name.c_str(), mac);
     this->declare_parameter("exposure", 0.0);
     this->declare_parameter("gain", 0.0);
     param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
@@ -98,19 +100,23 @@ void CameraNode::config_node(bool managed = false) {
         view_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
         inf_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("inf_" + name, 10);
     } else {
+        RCLCPP_INFO(this->get_logger(), "Camera node %s with MAC address %li configured", name.c_str(), mac);
         save_pub_ = this->create_publisher<sensor_msgs::msg::Image>("save_" + name, 10);
         view_pub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
         inf_pub_ = this->create_publisher<sensor_msgs::msg::Image>("inf_" + name, 10);
     }
-    service = this->create_service<harvester_interfaces::srv::TriggerCamera>("camtrig_" + name, std::bind(&CameraNode::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
+    service = this->create_service<harvester_interfaces::srv::TriggerCamera>(
+        "camtrig_" + name, std::bind(&CameraNode::service_trigger, this, 
+        std::placeholders::_1, std::placeholders::_2));
 }
 
 lni::CallbackReturn CameraNode::on_configure(const rclcpp_lifecycle::State &state) {
     this->lifecycled = true;
     config_node(this->lifecycled);
     if (!has_device) {
-        add_system(pSystem);
+        add_system(pSystem, false);
     }
+    RCLCPP_INFO(this->get_logger(), "Configured transition succesfull for camera %s ", name.c_str());
     return lni::CallbackReturn::SUCCESS;
 }
 
@@ -119,21 +125,22 @@ lni::CallbackReturn CameraNode::on_activate(const rclcpp_lifecycle::State &state
         RCLCPP_ERROR(this->get_logger(), "No device found for camera %s with MAC address %li", name.c_str(), mac);
         return lni::CallbackReturn::FAILURE;
     }
-    // pDevice->StartStream();
+    pDevice->StartStream(); 
+    RCLCPP_INFO(this->get_logger(), "Activated transition succesfull for camera %s ", name.c_str());
     return lni::CallbackReturn::SUCCESS;
 }
 
-lni::CallbackReturn CameraNode::on_deactivate(const rclcpp_lifecycle::State &state) {
-    return lni::CallbackReturn::SUCCESS;
-}
+// lni::CallbackReturn CameraNode::on_deactivate(const rclcpp_lifecycle::State &state) {
+//     return lni::CallbackReturn::SUCCESS;
+// }
 
-lni::CallbackReturn CameraNode::on_cleanup(const rclcpp_lifecycle::State &state) {
-    return lni::CallbackReturn::SUCCESS;
-}
+// lni::CallbackReturn CameraNode::on_cleanup(const rclcpp_lifecycle::State &state) {
+//     return lni::CallbackReturn::SUCCESS;
+// }
 
-lni::CallbackReturn CameraNode::on_shutdown(const rclcpp_lifecycle::State &state) {
-    return lni::CallbackReturn::SUCCESS;
-}
+// lni::CallbackReturn CameraNode::on_shutdown(const rclcpp_lifecycle::State &state) {
+//     return lni::CallbackReturn::SUCCESS;
+// }
 
 void CameraNode::param_callback(const rclcpp::Parameter & p) {
     auto name = p.get_name();
@@ -214,6 +221,7 @@ sensor_msgs::msg::Image::SharedPtr CameraNode::get_image(int trigger_type) {
 void CameraNode::service_trigger(
 const std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Request> request, 
 std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Response> response) {
+    RCLCPP_INFO(this->get_logger(), "Camera %s triggered with type %d", name.c_str(), request->type);
     if (this->lifecycled == true){
         if (this->get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
             RCLCPP_ERROR(this->get_logger(), "Camera %s is not active", name.c_str());
@@ -268,7 +276,7 @@ std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Response> response) {
 }
 
 
-int main(int argc, char **argv) {
+int main_cb(int argc, char **argv) {
     rclcpp::init(argc, argv);
     std::cout << "... GETTING CAMERAS ..." << std::endl;
     Arena::ISystem* pSystem = nullptr;
@@ -319,6 +327,40 @@ int main(int argc, char **argv) {
 
     for (auto& pDevice : vDevices) {
         pSystem->DestroyDevice(pDevice.first);
+    }
+
+    for (auto& camera_node : camera_nodes) {
+        executor.remove_node(camera_node->get_node_base_interface());
+    }
+
+    Arena::CloseSystem(pSystem);
+    rclcpp::shutdown();
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    rclcpp::init(argc, argv);
+    std::cout << "... GETTING CAMERAS ..." << std::endl;
+
+    Arena::ISystem* pSystem = nullptr;
+    rclcpp::executors::MultiThreadedExecutor executor;
+    std::vector<std::shared_ptr<CameraNode>> camera_nodes;
+    try {
+        pSystem = Arena::OpenSystem();
+        for (auto& cam : camset::by_mac) {
+            camera_nodes.push_back(std::make_shared<CameraNode>(pSystem, cam.second.name, cam.first, false));
+            executor.add_node(camera_nodes.back()->get_node_base_interface());
+        }
+    } catch(const std::exception& e) {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", e.what());
+    } catch (GenICam::GenericException& ge) {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
+    }
+
+    try {
+        executor.spin();
+    } catch (const std::exception &e) {
+        std::cerr << "An error occurred: " << e.what() << std::endl;
     }
 
     for (auto& camera_node : camera_nodes) {

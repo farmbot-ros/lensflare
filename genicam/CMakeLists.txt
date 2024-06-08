@@ -61,30 +61,23 @@ add_executable(camera_info
 )
 ament_target_dependencies(camera_info ${ros_dependencies})
 
+add_executable(camera_node
+  src/CameraNode.cpp
+)
+ament_target_dependencies(camera_node ${ros_dependencies})
+# target_link_options(camera_node PRIVATE -Wl,-e,main_cn)
 
-if (FALSE)
-  add_executable(camera_manager
-    src/CameraManager.cpp
-    src/CameraNode.cpp
-  )
-  ament_target_dependencies(camera_manager ${ros_dependencies})
-  install(TARGETS
-    camera_info
-    camera_manager
-    DESTINATION lib/${PROJECT_NAME}
-  )
-else()
-  add_executable(camera_node
-    src/CameraNode.cpp
-  )
-  ament_target_dependencies(camera_node ${ros_dependencies})
-  # target_link_options(camera_node PRIVATE -Wl,-e,main_cn)
-  install(TARGETS
-    camera_info
-    camera_node
-    DESTINATION lib/${PROJECT_NAME}
-  )
-endif()
+add_executable(camera_manager
+  src/CameraManager.cpp
+)
+ament_target_dependencies(camera_manager ${ros_dependencies})
+
+install(TARGETS
+  camera_info
+  camera_node
+  camera_manager
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 install(
     DIRECTORY include/
