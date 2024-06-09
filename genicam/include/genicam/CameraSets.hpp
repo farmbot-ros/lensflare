@@ -48,5 +48,4 @@ namespace camset {
         mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
         return strtoul(mac.c_str(), NULL, 16);
     }
-
 }

@@ -126,6 +126,9 @@ lni::CallbackReturn CameraNode::on_activate(const rclcpp_lifecycle::State &state
         return lni::CallbackReturn::FAILURE;
     }
     pDevice->StartStream(); 
+    save_lpub_->on_activate();
+    view_lpub_->on_activate();
+    inf_lpub_->on_activate();
     RCLCPP_INFO(this->get_logger(), "Activated transition succesfull for camera %s ", name.c_str());
     return lni::CallbackReturn::SUCCESS;
 }

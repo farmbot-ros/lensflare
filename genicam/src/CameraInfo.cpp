@@ -127,6 +127,7 @@ void CameraInfo::update_camera_info() {
                 camera_device.light_port = "6512";
                 camera_device.light_channel = camset::by_mac.at(hex_mac).channel;
                 camera_device.id = camset::by_mac.at(hex_mac).name;
+                camera_device.name = camset::by_mac.at(hex_mac).name;
             }
             camera_array.cameras.push_back(camera_device);   
         }

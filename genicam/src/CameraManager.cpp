@@ -14,19 +14,19 @@
 #include <ArenaApi.h>
 #include <GenICam.h>
 
-typedef std::pair<std::string, std::shared_ptr<rclcpp::Client<lifecycle_msgs::srv::GetState>>> cstate;
-typedef std::pair<std::string, std::shared_ptr<rclcpp::Client<lifecycle_msgs::srv::ChangeState>>> cchange;
-
+using namespace std::chrono_literals;
 
 CameraManager::CameraManager() : Node("camera_manager") {
     camera_info_sub = this->create_subscription<harvester_interfaces::msg::CameraDeviceArray>("/caminfo", 10, std::bind(&CameraManager::cam_info_update, this, std::placeholders::_1));
-    camera_check_timer = this->create_wall_timer(std::chrono::seconds(5), std::bind(&CameraManager::cam_check_update, this));
+    camera_check_timer = this->create_wall_timer(std::chrono::seconds(30), std::bind(&CameraManager::cam_check_update, this));
     camera_get = this->create_client<harvester_interfaces::srv::CreateCamera>("caminfo");
 
     for (auto& cam : camset::by_mac) {
         auto cam_topic_name = "camera_" + cam.second.name;
-        camera_get_state.push_back(cstate(cam_topic_name, this->create_client<lifecycle_msgs::srv::GetState>(cam_topic_name + "/get_state")));
-        camera_change_state.push_back(cchange(cam_topic_name, this->create_client<lifecycle_msgs::srv::ChangeState>(cam_topic_name + "/change_state")));
+        // camera_get_state.push_back(cstate(cam_topic_name, this->create_client<lifecycle_msgs::srv::GetState>(cam_topic_name + "/get_state")));
+        // camera_change_state.push_back(cchange(cam_topic_name, this->create_client<lifecycle_msgs::srv::ChangeState>(cam_topic_name + "/change_state")));
+        camera_get_state[cam_topic_name] = this->create_client<lifecycle_msgs::srv::GetState>(cam_topic_name + "/get_state");
+        camera_change_state[cam_topic_name] = this->create_client<lifecycle_msgs::srv::ChangeState>(cam_topic_name + "/change_state");
 
         auto device = harvester_interfaces::msg::CameraDevice();
         device.id = cam.second.name;
@@ -53,98 +53,151 @@ void CameraManager::cam_check_update() {
         while (!camera_get->wait_for_service(std::chrono::seconds(2))) {
             RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Service not available, please launch CameraInfo node");
         }
-
         auto request = std::make_shared<harvester_interfaces::srv::CreateCamera::Request>();
-        request->camera_name = camera_node.name;
-
-        auto result = camera_get->async_send_request(request, [this](rclcpp::Client<harvester_interfaces::srv::CreateCamera>::SharedFuture future) {
+        request->camera_name = camera_node.id;
+        auto result = camera_get->async_send_request(request, [this, camera_node](rclcpp::Client<harvester_interfaces::srv::CreateCamera>::SharedFuture future) {
             try {
                 auto response = future.get();
-                RCLCPP_INFO(this->get_logger(), "Camera %s is available", response->camera_device.name);
+                bool success = response->success;
+                auto client_state = camera_get_state["camera_" + camera_node.id];
+                auto state_request = std::make_shared<lifecycle_msgs::srv::GetState::Request>();
+                if (!client_state->wait_for_service(std::chrono::seconds(2))) {
+                    RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Service not available, please launch CameraNode node");
+                }
+                auto state_result = client_state->async_send_request(state_request, [this, camera_node, success](rclcpp::Client<lifecycle_msgs::srv::GetState>::SharedFuture future) {
+                    try {
+                        auto state_response = future.get();
+                        change_state(camera_node, state_response->current_state, success);
+                    } catch (const std::exception& e) {
+                        RCLCPP_ERROR(this->get_logger(), "Service call failed");
+                    }
+                });
             } catch (const std::exception& e) {
                 RCLCPP_ERROR(this->get_logger(), "Service call failed");
             }
         });
-
-        // auto future_result = camera_get->async_send_request(request);
-        // auto future_status = wait_for_result(future_result, std::chrono::seconds(2));
-
-        // if (future_status == std::future_status::ready) {
-        //     auto response = future_result.get();
-        //     RCLCPP_INFO(this->get_logger(), "Camera %s is available", response->camera_device.name.c_str());
-        // } else {
-        //     RCLCPP_ERROR(this->get_logger(), "Service call failed");
-        // }
-
-
-
-        // for (auto camera : camera_get_state) {
-        //     unsigned int state = get_state(camera, std::chrono::seconds(2));
-        //     if (state == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
-        //         RCLCPP_INFO(this->get_logger(), "Camera %s is ACTIVE", camera_node.name.c_str());
-        //     } else {
-        //         RCLCPP_ERROR(this->get_logger(), "Camera %s is NOT ACTIVE", camera_node.name.c_str());
-        //     }
-        // }
-
-        
     }
-    RCLCPP_INFO(this->get_logger(), "Camera info updated");
+    // RCLCPP_INFO(this->get_logger(), "Camera info updated");
 }
 
-template <typename FutureT, typename DurationT>
-std::future_status CameraManager::wait_for_result(FutureT& future, DurationT timeout) {
-    auto end = std::chrono::steady_clock::now() + timeout;
-    std::chrono::milliseconds wait_period(1000);
-    std::future_status status = std::future_status::timeout;
+// State constants
+// static constexpr uint8_t PRIMARY_STATE_UNKNOWN = 0u;
+// static constexpr uint8_t PRIMARY_STATE_UNCONFIGURED = 1u;
+// static constexpr uint8_t PRIMARY_STATE_INACTIVE = 2u;
+// static constexpr uint8_t PRIMARY_STATE_ACTIVE = 3u;
+// static constexpr uint8_t PRIMARY_STATE_FINALIZED = 4u;
+// static constexpr uint8_t TRANSITION_STATE_CONFIGURING = 10u;
+// static constexpr uint8_t TRANSITION_STATE_CLEANINGUP = 11u;
+// static constexpr uint8_t TRANSITION_STATE_SHUTTINGDOWN =12u;
+// static constexpr uint8_t TRANSITION_STATE_ACTIVATING = 13u;
+// static constexpr uint8_t TRANSITION_STATE_DEACTIVATING = 14u;
+// static constexpr uint8_t TRANSITION_STATE_ERRORPROCESSING = 15u;
 
-    do {
-        auto now = std::chrono::steady_clock::now();
-        auto time_left = end - now;
-        if (time_left <= std::chrono::seconds(0)) {
-            break;
-        }
-        status = future.wait_for(time_left< wait_period ? time_left : wait_period);
-    } while ( rclcpp::ok() && status != std::future_status::ready);
+void CameraManager::change_state(const harvester_interfaces::msg::CameraDevice camera, lifecycle_msgs::msg::State curr_state, bool running) {
+    auto client_change = camera_change_state["camera_" + camera.id];
+    auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
+    bool proceed = false;
 
-    return status;
-}
-
-unsigned int CameraManager::get_state(cstate camera, std::chrono::seconds timeout) {
-    auto request = std::make_shared<lifecycle_msgs::srv::GetState::Request>();
-    auto client_state = camera.second;
-    while (!camera.second->wait_for_service(timeout)) {
-        auto service_name = client_state->get_service_name();
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Service %s not available, please launch CameraInfo node", service_name);
-    }
-
-
-    auto future_result = camera.second->async_send_request(request);
-    auto future_stat = this->wait_for_result(future_result, timeout);
+    RCLCPP_INFO(this->get_logger(), "Camera %s is %s in current state %i", camera.id.c_str(), running ? "running" : "not running", curr_state.id);
     
-    // auto future_status = wait_for_result(future_result, timeout);
+    if (curr_state.id == 1 && running) {
+        request->transition.id = lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE;
+        proceed = true;
+    } else if (curr_state.id == 2 && running) {
+        request->transition.id = lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE;
+        proceed = true;
+    }
 
-    // if (future_status == std::future_status::ready) {
-    //     return future_result.get()->current_state.id;
-    //     RCLCPP_INFO(this->get_logger(), "Camera %s is ACTIVE", camera.first.c_str());
-    // } else {
-    //     return lifecycle_msgs::msg::State::PRIMARY_STATE_UNKNOWN;
-    // }
+    if (!proceed) {
+        RCLCPP_INFO(this->get_logger(), "No state change needed for camera %s", camera.id.c_str());
+        return;
+    }
+
+    auto result = client_change->async_send_request(request, [this, camera](rclcpp::Client<lifecycle_msgs::srv::ChangeState>::SharedFuture future) {
+        try {
+            auto response = future.get();
+            if (response->success) {
+                RCLCPP_INFO(this->get_logger(), "Camera %s state changed", camera.id.c_str());
+            } else {
+                RCLCPP_ERROR(this->get_logger(), "Camera %s state change failed", camera.id.c_str());
+            }
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(this->get_logger(), "Service call failed");
+        }
+    });
 }
 
-// bool CameraManager::change_state(cchange camera, unsigned int state, std::chrono::seconds timeout) {
-//     auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
-//     request->transition.id = state;
-//     while (!camera.second->wait_for_service(timeout)) {
-//         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Service not available, please launch CameraInfo node");
-//     }
-//     auto result = camera.second->async_send_request(request);
-//     if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) == rclcpp::FutureReturnCode::SUCCESS) {
-//         return result.get()->success;
-//     } else {
-//         return false;
-//     }
-// }
+template <typename FutureT, typename WaitTimeT>
+std::future_status CameraManager::wait_for_result(FutureT & future, WaitTimeT time_to_wait){
+  auto end = std::chrono::steady_clock::now() + time_to_wait;
+  std::chrono::milliseconds wait_period(100);
+  std::future_status status = std::future_status::timeout;
+  do{
+    auto now = std::chrono::steady_clock::now();
+    auto time_left = end - now;
+    if (time_left <= std::chrono::seconds(0)){ break; }
+    status = future.wait_for((time_left < wait_period) ? time_left : wait_period);
+  }
+  while(rclcpp::ok() && status != std::future_status::ready);
+  return status;
+}
+
+unsigned int CameraManager::get_state(harvester_interfaces::msg::CameraDevice camera_node, std::chrono::seconds timeout = 3s) {
+    auto client_get_state = camera_get_state["camera_" + camera_node.id];
+    auto request = std::make_shared<lifecycle_msgs::srv::GetState::Request>();
+
+    if (!client_get_state->wait_for_service(timeout)) {
+        RCLCPP_ERROR(get_logger(), "Service %s not available", client_get_state->get_service_name());
+        return lifecycle_msgs::msg::State::PRIMARY_STATE_UNKNOWN;
+    }
+
+    auto future_result = client_get_state->async_send_request(request);
+    auto future_status = wait_for_result(future_result, timeout);
+
+    if (future_status != std::future_status::ready){
+        RCLCPP_ERROR(get_logger(), "Server timed out while getting current state for %s", camera_node.id.c_str());
+        return lifecycle_msgs::msg::State::PRIMARY_STATE_UNKNOWN;
+    }
+
+    if (future_result.get()){
+        auto state = future_result.get()->current_state.id;
+        RCLCPP_INFO(get_logger(), "Node %s has current state %s", camera_node.id.c_str(), future_result.get()->current_state.label.c_str());
+        return state;
+    }
+    else{
+        RCLCPP_ERROR(get_logger(), "Failed to get current state for %s", camera_node.id.c_str());
+        return lifecycle_msgs::msg::State::PRIMARY_STATE_UNKNOWN;
+    }
+}
+
+bool CameraManager::change_state(harvester_interfaces::msg::CameraDevice camera_node, std::uint8_t transition, std::chrono::seconds timeout = 3s){
+    auto client_change_state = camera_change_state["camera_" + camera_node.id];
+    auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
+    request->transition.id = transition;
+
+    if (!client_change_state->wait_for_service(timeout)){
+        RCLCPP_ERROR(get_logger(), "Service %s not available", client_change_state->get_service_name());
+        return false;
+    }
+
+    auto future_result = client_change_state->async_send_request(request);
+    auto future_status = wait_for_result(future_result,timeout);
+
+    if (future_status!=std::future_status::ready){
+        RCLCPP_ERROR(get_logger(), "Server timed out while getting current state for %s", camera_node.id.c_str());
+        return false;
+    }
+
+    if (future_result.get()->success){
+        RCLCPP_INFO(get_logger(), "Transition %d successfully triggered", static_cast<unsigned int>(transition));
+        return true;
+    }
+    else{
+        RCLCPP_WARN(get_logger(), "Failed to get trigger transition %d for %s", static_cast<unsigned int>(transition), camera_node.id.c_str());
+        return false;
+    }
+}
+
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);

@@ -33,21 +33,25 @@ class CameraManager : public rclcpp::Node {
         harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_infos;
         std::vector<harvester_interfaces::msg::CameraDevice> camera_devices;
 
-        std::vector<cstate> camera_get_state;
-        std::vector<cchange> camera_change_state;
+        // std::vector<cstate> camera_get_state;
+        // std::vector<cchange> camera_change_state;
+
+        std::map<std::string, std::shared_ptr<rclcpp::Client<lifecycle_msgs::srv::GetState>>> camera_get_state;
+        std::map<std::string, std::shared_ptr<rclcpp::Client<lifecycle_msgs::srv::ChangeState>>> camera_change_state;
 
         bool has_caminfos;
-
-        template <typename FutureT, typename DurationT>
-        std::future_status wait_for_result(FutureT& future, DurationT timeout);
 
     public:
         CameraManager();
         ~CameraManager();
-        unsigned int get_state(cstate camera, std::chrono::seconds timeout);
-        // bool change_state(cchange camera, unsigned int state, std::chrono::seconds timeout);
 
     private:
         void cam_info_update(const harvester_interfaces::msg::CameraDeviceArray::SharedPtr msg);
         void cam_check_update();
+        void change_state(const harvester_interfaces::msg::CameraDevice, lifecycle_msgs::msg::State curr_state, bool runnning);
+        template <typename FutureT, typename WaitTimeT>
+        
+        std::future_status wait_for_result(FutureT & future, WaitTimeT time_to_wait);
+        unsigned int get_state(harvester_interfaces::msg::CameraDevice camera_node, std::chrono::seconds timeout);
+        bool change_state(harvester_interfaces::msg::CameraDevice camera_node, std::uint8_t transition, std::chrono::seconds timeout);
 };
