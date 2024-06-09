@@ -1,4 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
+// #include <rclcpp/cmd_line_parser.hpp>
 #include <lifecycle_msgs/msg/state.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -279,7 +280,7 @@ std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Response> response) {
 }
 
 
-int main_cb(int argc, char **argv) {
+int main_unmanaged(int argc, char **argv) {
     rclcpp::init(argc, argv);
     std::cout << "... GETTING CAMERAS ..." << std::endl;
     Arena::ISystem* pSystem = nullptr;
@@ -341,7 +342,7 @@ int main_cb(int argc, char **argv) {
     return 0;
 }
 
-int main(int argc, char **argv) {
+int main_managed(int argc, char **argv) {
     rclcpp::init(argc, argv);
     std::cout << "... GETTING CAMERAS ..." << std::endl;
 
@@ -373,4 +374,33 @@ int main(int argc, char **argv) {
     Arena::CloseSystem(pSystem);
     rclcpp::shutdown();
     return 0;
+}
+
+std::string parse_arguments(int argc, char * argv[], std::string custom_arg){
+    auto return_string = "";
+    for (int i = 1; i < argc; ++i){
+        if (std::string(argv[i]) == "--" + custom_arg){
+            if (i + 1 < argc) {  // Make sure we aren't at the end of argv!
+                return_string = argv[++i];  // Increment 'i' so we don't get the argument as the next argv[i].
+            }
+            else { // There was no argument to the custom flag
+                std::cerr << "--" << custom_arg << " option requires one argument." << std::endl;
+            }
+        }
+    }
+    return return_string;
+}
+
+int main(int argc, char **argv) {
+    for (int i = 0; i < argc; ++i) {
+        auto managed_str = parse_arguments(argc, argv, "managed");
+        if (managed_str == "true") {
+            return main_managed(argc, argv);
+        } else if (managed_str == "false") {
+            return main_unmanaged(argc, argv);
+        } else {
+            std::cerr << "Invalid argument for managed flag\nuse --managed true or --managed false" << std::endl;
+            return 0;
+        }
+    }
 }

@@ -106,6 +106,8 @@ void CameraManager::change_state(const harvester_interfaces::msg::CameraDevice c
     } else if (curr_state.id == 2 && running) {
         request->transition.id = lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE;
         proceed = true;
+    } else if ((curr_state.id == 2 || curr_state.id == 1) && !running){
+        request->transition.id = lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE;
     }
 
     if (!proceed) {
