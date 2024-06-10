@@ -17,7 +17,7 @@ CameraArray::CameraArray(harvester_interfaces::msg::CameraDeviceArray::SharedPtr
     publish_array_info_timer_ = this->create_wall_timer(std::chrono::milliseconds(100), std::bind(&CameraArray::publish_camera_info, this));
     array_pub_ = this->create_publisher<harvester_interfaces::msg::CameraDeviceArray>("/caminfo", 10);
     service = this->create_service<camc>("caminfo", std::bind(&CameraArray::service_trigger, this, std::placeholders::_1, std::placeholders::_2));
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Camer info service started and publishing camera info");
+    RCLCPP_INFO(this->get_logger(), "Camer info service started and publishing camera info");
 }
 
 void CameraArray::service_trigger(const std::shared_ptr<camc::Request> request, std::shared_ptr<camc::Response> response) {
@@ -29,7 +29,7 @@ void CameraArray::service_trigger(const std::shared_ptr<camc::Request> request, 
     std::string camera_name = request->camera_name;
     std::string mac_address = request->mac_address;
     harvester_interfaces::msg::CameraDevice camera_device = harvester_interfaces::msg::CameraDevice();
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Camera info requested for %s", camera_name.c_str());
+    RCLCPP_INFO(this->get_logger(), "Camera info requested for %s", camera_name.c_str());
     if (!mac_address.empty()) {
         uint64_t hex_mac = convert_mac(mac_address);
         for (const auto &camera : camera_info->cameras) {
@@ -104,6 +104,7 @@ void CameraInfo::update_camera_info() {
     Arena::ISystem* pSystem = nullptr;
     std::vector<std::pair<Arena::IDevice*, uint64_t>> vDevices = std::vector<std::pair<Arena::IDevice*, uint64_t>>();
     harvester_interfaces::msg::CameraDeviceArray camera_array = harvester_interfaces::msg::CameraDeviceArray();
+    RCLCPP_INFO(this->get_logger(), "Updating camera info");
 
     try {
         pSystem = Arena::OpenSystem();

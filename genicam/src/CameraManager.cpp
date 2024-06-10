@@ -78,18 +78,16 @@ void CameraManager::cam_check_update() {
             }
         });
     }
-    // RCLCPP_INFO(this->get_logger(), "Camera info updated");
+    RCLCPP_INFO(this->get_logger(), "Cameras updated");
 }
 
 
 
 void CameraManager::state_controller(const harvester_interfaces::msg::CameraDevice camera, lifecycle_msgs::msg::State curr_state, bool running) {
+    // RCLCPP_INFO(this->get_logger(), "Camera %s is %s in current state %i", camera.id.c_str(), running ? "running" : "not running", curr_state.id);
     auto client_change = camera_change_state["camera_" + camera.id];
     auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
     bool proceed = false;
-
-    RCLCPP_INFO(this->get_logger(), "Camera %s is %s in current state %i", camera.id.c_str(), running ? "running" : "not running", curr_state.id);
-    
     // State constants
     // static constexpr uint8_t PRIMARY_STATE_UNKNOWN = 0u;
     // static constexpr uint8_t PRIMARY_STATE_UNCONFIGURED = 1u;
@@ -117,7 +115,7 @@ void CameraManager::state_controller(const harvester_interfaces::msg::CameraDevi
     }
 
     if (!proceed) {
-        RCLCPP_INFO(this->get_logger(), "No state change needed for camera %s", camera.id.c_str());
+        // RCLCPP_INFO(this->get_logger(), "No state change needed for camera %s", camera.id.c_str());
         return;
     }
 

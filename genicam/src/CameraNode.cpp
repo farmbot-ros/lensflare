@@ -23,6 +23,7 @@ CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, u
     name = camera_name;
     mac = mac_address;
     RCLCPP_INFO(this->get_logger(), "Camera node for camera %s with MAC address %li is created", name.c_str(), mac);
+    init_params();
     if (init) {
         config_node(false);
         add_device(pDevice, false);
@@ -38,6 +39,7 @@ CameraNode::CameraNode(Arena::ISystem* const pSystem, std::string camera_name, u
     name = camera_name;
     mac = mac_address;
     RCLCPP_INFO(this->get_logger(), "Camera node for camera %s with MAC address %li is created", name.c_str(), mac);
+    init_params();
     if (init) {
         config_node(false);
         add_system(pSystem, false);
@@ -52,6 +54,7 @@ CameraNode::CameraNode(std::string camera_name, uint64_t mac_address, bool init 
     name = camera_name;
     mac = mac_address;
     RCLCPP_INFO(this->get_logger(), "Camera node for camera %s with MAC address %li is created", name.c_str(), mac);
+    init_params();
     if (init){
         config_node(false);
     }
@@ -90,12 +93,20 @@ void CameraNode::add_system(Arena::ISystem* const pSystem, bool start_streaming 
     }
 }
 
-void CameraNode::config_node(bool managed = false) {
-    this->declare_parameter("exposure", 0.0);
-    this->declare_parameter("gain", 0.0);
+void CameraNode::init_params() {
     param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
-    exposure = param_subscriber_->add_parameter_callback("param_int", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
-    gain = param_subscriber_->add_parameter_callback("param_float", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
+    if (exposure == nullptr) {
+        this->declare_parameter("exposure", 0.0);
+        exposure = param_subscriber_->add_parameter_callback("param_int", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
+    }
+    if (gain == nullptr) {
+        this->declare_parameter("gain", 0.0);
+        gain = param_subscriber_->add_parameter_callback("param_float", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
+    }
+}
+
+void CameraNode::config_node(bool managed = false) {
+    // init_params();
     if (managed) {
         save_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("save_" + name, 10);
         view_lpub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
@@ -122,7 +133,7 @@ lni::CallbackReturn CameraNode::on_configure(const rclcpp_lifecycle::State &stat
 }
 
 lni::CallbackReturn CameraNode::on_activate(const rclcpp_lifecycle::State &state) {
-    if (pDevice == nullptr) {
+    if (!has_device) {
         RCLCPP_ERROR(this->get_logger(), "No device found for camera %s with MAC address %li", name.c_str(), mac);
         return lni::CallbackReturn::FAILURE;
     }
@@ -148,9 +159,10 @@ lni::CallbackReturn CameraNode::on_cleanup(const rclcpp_lifecycle::State &state)
     view_lpub_.reset();
     inf_lpub_.reset();
     if (has_device) {
-        pDevice = nullptr;
+        pSystem->DestroyDevice(pDevice);
         has_device = false;
     }
+    RCLCPP_INFO(this->get_logger(), "Cleanup transition succesfull for camera %s ", name.c_str());
     return lni::CallbackReturn::SUCCESS;
 }
 

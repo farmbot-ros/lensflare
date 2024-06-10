@@ -28,8 +28,8 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         rclcpp::Service<harvester_interfaces::srv::TriggerCamera>::SharedPtr service;
 
         std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
-        std::shared_ptr<rclcpp::ParameterCallbackHandle> exposure;
-        std::shared_ptr<rclcpp::ParameterCallbackHandle> gain;
+        std::shared_ptr<rclcpp::ParameterCallbackHandle> exposure = nullptr;
+        std::shared_ptr<rclcpp::ParameterCallbackHandle> gain = nullptr;
 
         Arena::ISystem* pSystem;
         bool has_system;
@@ -49,6 +49,7 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         ~CameraNode();
 
     private:
+        void init_params();
         void config_node(bool managed);
         void load_camera_settings();
         void load_settings_from_func();
