@@ -134,15 +134,28 @@ lni::CallbackReturn CameraNode::on_activate(const rclcpp_lifecycle::State &state
     return lni::CallbackReturn::SUCCESS;
 }
 
-// lni::CallbackReturn CameraNode::on_deactivate(const rclcpp_lifecycle::State &state) {
-//     return lni::CallbackReturn::SUCCESS;
-// }
+lni::CallbackReturn CameraNode::on_deactivate(const rclcpp_lifecycle::State &state) {
+    pDevice->StopStream();
+    save_lpub_->on_deactivate();
+    view_lpub_->on_deactivate();
+    inf_lpub_->on_deactivate();
+    RCLCPP_INFO(this->get_logger(), "Deactivated transition succesfull for camera %s ", name.c_str());
+    return lni::CallbackReturn::SUCCESS;
+}
 
-// lni::CallbackReturn CameraNode::on_cleanup(const rclcpp_lifecycle::State &state) {
-//     return lni::CallbackReturn::SUCCESS;
-// }
+lni::CallbackReturn CameraNode::on_cleanup(const rclcpp_lifecycle::State &state) {
+    save_lpub_.reset();
+    view_lpub_.reset();
+    inf_lpub_.reset();
+    if (has_device) {
+        pDevice = nullptr;
+        has_device = false;
+    }
+    return lni::CallbackReturn::SUCCESS;
+}
 
 // lni::CallbackReturn CameraNode::on_shutdown(const rclcpp_lifecycle::State &state) {
+//     pDevice->StopStream();
 //     return lni::CallbackReturn::SUCCESS;
 // }
 

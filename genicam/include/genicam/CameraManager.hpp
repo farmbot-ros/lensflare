@@ -33,9 +33,6 @@ class CameraManager : public rclcpp::Node {
         harvester_interfaces::msg::CameraDeviceArray::SharedPtr camera_infos;
         std::vector<harvester_interfaces::msg::CameraDevice> camera_devices;
 
-        // std::vector<cstate> camera_get_state;
-        // std::vector<cchange> camera_change_state;
-
         std::map<std::string, std::shared_ptr<rclcpp::Client<lifecycle_msgs::srv::GetState>>> camera_get_state;
         std::map<std::string, std::shared_ptr<rclcpp::Client<lifecycle_msgs::srv::ChangeState>>> camera_change_state;
 
@@ -48,7 +45,7 @@ class CameraManager : public rclcpp::Node {
     private:
         void cam_info_update(const harvester_interfaces::msg::CameraDeviceArray::SharedPtr msg);
         void cam_check_update();
-        void change_state(const harvester_interfaces::msg::CameraDevice, lifecycle_msgs::msg::State curr_state, bool runnning);
+        void state_controller(const harvester_interfaces::msg::CameraDevice, lifecycle_msgs::msg::State curr_state, bool runnning);
         template <typename FutureT, typename WaitTimeT>
         
         std::future_status wait_for_result(FutureT & future, WaitTimeT time_to_wait);

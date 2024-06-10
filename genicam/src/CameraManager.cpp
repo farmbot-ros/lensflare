@@ -23,8 +23,6 @@ CameraManager::CameraManager() : Node("camera_manager") {
 
     for (auto& cam : camset::by_mac) {
         auto cam_topic_name = "camera_" + cam.second.name;
-        // camera_get_state.push_back(cstate(cam_topic_name, this->create_client<lifecycle_msgs::srv::GetState>(cam_topic_name + "/get_state")));
-        // camera_change_state.push_back(cchange(cam_topic_name, this->create_client<lifecycle_msgs::srv::ChangeState>(cam_topic_name + "/change_state")));
         camera_get_state[cam_topic_name] = this->create_client<lifecycle_msgs::srv::GetState>(cam_topic_name + "/get_state");
         camera_change_state[cam_topic_name] = this->create_client<lifecycle_msgs::srv::ChangeState>(cam_topic_name + "/change_state");
 
@@ -64,10 +62,13 @@ void CameraManager::cam_check_update() {
                 if (!client_state->wait_for_service(std::chrono::seconds(2))) {
                     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Service not available, please launch CameraNode node");
                 }
+                if (client_state->prune_requests_older_than(std::chrono::system_clock::now() - 30s) > 0) {
+                    RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "Prunning some old requests...");
+                }
                 auto state_result = client_state->async_send_request(state_request, [this, camera_node, success](rclcpp::Client<lifecycle_msgs::srv::GetState>::SharedFuture future) {
                     try {
                         auto state_response = future.get();
-                        change_state(camera_node, state_response->current_state, success);
+                        state_controller(camera_node, state_response->current_state, success);
                     } catch (const std::exception& e) {
                         RCLCPP_ERROR(this->get_logger(), "Service call failed");
                     }
@@ -80,34 +81,39 @@ void CameraManager::cam_check_update() {
     // RCLCPP_INFO(this->get_logger(), "Camera info updated");
 }
 
-// State constants
-// static constexpr uint8_t PRIMARY_STATE_UNKNOWN = 0u;
-// static constexpr uint8_t PRIMARY_STATE_UNCONFIGURED = 1u;
-// static constexpr uint8_t PRIMARY_STATE_INACTIVE = 2u;
-// static constexpr uint8_t PRIMARY_STATE_ACTIVE = 3u;
-// static constexpr uint8_t PRIMARY_STATE_FINALIZED = 4u;
-// static constexpr uint8_t TRANSITION_STATE_CONFIGURING = 10u;
-// static constexpr uint8_t TRANSITION_STATE_CLEANINGUP = 11u;
-// static constexpr uint8_t TRANSITION_STATE_SHUTTINGDOWN =12u;
-// static constexpr uint8_t TRANSITION_STATE_ACTIVATING = 13u;
-// static constexpr uint8_t TRANSITION_STATE_DEACTIVATING = 14u;
-// static constexpr uint8_t TRANSITION_STATE_ERRORPROCESSING = 15u;
 
-void CameraManager::change_state(const harvester_interfaces::msg::CameraDevice camera, lifecycle_msgs::msg::State curr_state, bool running) {
+
+void CameraManager::state_controller(const harvester_interfaces::msg::CameraDevice camera, lifecycle_msgs::msg::State curr_state, bool running) {
     auto client_change = camera_change_state["camera_" + camera.id];
     auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
     bool proceed = false;
 
     RCLCPP_INFO(this->get_logger(), "Camera %s is %s in current state %i", camera.id.c_str(), running ? "running" : "not running", curr_state.id);
     
+    // State constants
+    // static constexpr uint8_t PRIMARY_STATE_UNKNOWN = 0u;
+    // static constexpr uint8_t PRIMARY_STATE_UNCONFIGURED = 1u;
+    // static constexpr uint8_t PRIMARY_STATE_INACTIVE = 2u;
+    // static constexpr uint8_t PRIMARY_STATE_ACTIVE = 3u;
+    // static constexpr uint8_t PRIMARY_STATE_FINALIZED = 4u;
+    // static constexpr uint8_t TRANSITION_STATE_CONFIGURING = 10u;
+    // static constexpr uint8_t TRANSITION_STATE_CLEANINGUP = 11u;
+    // static constexpr uint8_t TRANSITION_STATE_SHUTTINGDOWN =12u;
+    // static constexpr uint8_t TRANSITION_STATE_ACTIVATING = 13u;
+    // static constexpr uint8_t TRANSITION_STATE_DEACTIVATING = 14u;
+    // static constexpr uint8_t TRANSITION_STATE_ERRORPROCESSING = 15u;
     if (curr_state.id == 1 && running) {
         request->transition.id = lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE;
         proceed = true;
     } else if (curr_state.id == 2 && running) {
         request->transition.id = lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE;
         proceed = true;
-    } else if ((curr_state.id == 2 || curr_state.id == 1) && !running){
+    } else if (curr_state.id == 3  && !running){
         request->transition.id = lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE;
+        proceed = true;
+    } else if (curr_state.id == 2 && !running) {
+        request->transition.id = lifecycle_msgs::msg::Transition::TRANSITION_CLEANUP;
+        proceed = true;
     }
 
     if (!proceed) {
