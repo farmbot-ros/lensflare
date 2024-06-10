@@ -1,5 +1,5 @@
 string camera_name
-string mac_address
+int64 mac_address
 ---
 bool success
 string message

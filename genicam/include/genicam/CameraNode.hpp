@@ -27,7 +27,6 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr inf_pub_;
         
         rclcpp::Service<harvester_interfaces::srv::TriggerCamera>::SharedPtr service;
-
         rclcpp::Client<harvester_interfaces::srv::TriggerFlash>::SharedPtr flash_light;
 
         std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;

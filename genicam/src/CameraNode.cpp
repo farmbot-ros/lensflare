@@ -104,7 +104,7 @@ void CameraNode::init_params() {
         this->declare_parameter("gain", 0.0);
         gain = param_subscriber_->add_parameter_callback("param_float", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
     }
-    flash_light = this->create_client<harvester_interfaces::srv::TriggerFlash>("flash_" + name);
+    flash_light = this->create_client<harvester_interfaces::srv::TriggerFlash>("flash_trigger");
 }
 
 void CameraNode::config_node(bool managed = false) {
@@ -236,7 +236,7 @@ sensor_msgs::msg::Image::SharedPtr CameraNode::get_image(int trigger_type) {
     flash_light->prune_pending_requests();
     
     auto request = std::make_shared<harvester_interfaces::srv::TriggerFlash::Request>();
-    request->camera_name = name;
+    request->mac_address = mac;
     auto result = flash_light->async_send_request(request, [](rclcpp::Client<harvester_interfaces::srv::TriggerFlash>::SharedFuture future) {
         auto response = future.get();
         bool success = response->success;

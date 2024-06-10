@@ -72,7 +72,7 @@ class FlashNode(Node):
             )
         
          # service
-        self.camera_service = self.create_service(TriggerFlash, f'flash_{name}', self.service_trigger)
+        self.camera_service = self.create_service(TriggerFlash, f'flash_trigger', self.service_trigger)
 
 
         
@@ -86,7 +86,18 @@ class FlashNode(Node):
 
 
     def service_trigger(self, request, response):
-        print(f"light controller ip: {request.camera_name}")
+        response.success = True
+        mac = request.mac_address
+        if mac in BY_MAC:
+            ip, channel, name = BY_MAC[mac][:3]
+            for i in range(6):
+                # self.pulse(ip, channel)
+                print(f"fflashing {name}...")
+                time.sleep(0.3)
+        else:
+            response.success = False
+            response.message = "No light controller found with this MAC address."
+        return response
 
 
 

@@ -8,6 +8,7 @@ import time
 from harvester_interfaces.msg import CameraDevice, CameraDeviceArray
 from harvester_interfaces.srv import TriggerCamera
 from ament_index_python.packages import get_package_share_directory
+from harvester_interfaces.srv import TriggerFlash
 
 import socket
 import time
@@ -78,6 +79,7 @@ class CameraNode(Node):
 
         # service
         self.camera_service = self.create_service(TriggerCamera, f'camtrig_{self.name}', self.service_trigger)
+        self.flash_service = self.create_client(TriggerFlash, f'flash_trigger')
         
         self.buffer_bytes_per_pixel = None
         self.time_now = 0
