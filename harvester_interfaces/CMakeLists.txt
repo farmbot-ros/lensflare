@@ -14,6 +14,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CameraDeviceArray.msg"
   "srv/CreateCamera.srv"
   "srv/TriggerCamera.srv"
+  "srv/TriggerFlash.srv"
 )
 
 ament_package()

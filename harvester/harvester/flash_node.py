@@ -13,6 +13,8 @@ import json
 
 import rclpy
 from rclpy.node import Node
+
+from harvester_interfaces.srv import TriggerFlash
 from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import Image
 from std_msgs.msg import Int16, Bool
@@ -68,6 +70,9 @@ class FlashNode(Node):
                 lambda msg, ip=ip, channel=channel: self.flash_callback(msg, ip, channel),
                 10,
             )
+        
+         # service
+        self.camera_service = self.create_service(TriggerFlash, f'flash_{name}', self.service_trigger)
 
 
         
@@ -79,6 +84,9 @@ class FlashNode(Node):
                 time.sleep(0.3)
 
 
+
+    def service_trigger(self, request, response):
+        print(f"light controller ip: {request.camera_name}")
 
 
 
