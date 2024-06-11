@@ -61,7 +61,7 @@ class CameraNode(Node):
     def __init__(self, name, mac, device_infos):
         self.mac = mac
         self.name = name
-        self.timer = 2
+        self.timer = 1
         self.device_infos = device_infos
         self.bridge = CvBridge()
         super().__init__(f'camera_{self.name}_node')

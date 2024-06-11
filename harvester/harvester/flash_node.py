@@ -66,7 +66,7 @@ class FlashNode(Node):
             )
         
          # service
-        self.camera_service = self.create_service(TriggerCapture, f'flash_trigger', self.service_trigger)
+        self.camera_service = self.create_service(TriggerCapture, f'captrig', self.service_trigger)
 
 
         

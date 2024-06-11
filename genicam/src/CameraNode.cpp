@@ -104,7 +104,7 @@ void CameraNode::init_params() {
         this->declare_parameter("gain", 0.0);
         gain = param_subscriber_->add_parameter_callback("param_float", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
     }
-    captrig = this->create_client<harvester_interfaces::srv::TriggerCapture>("flash_trigger");
+    captrig = this->create_client<harvester_interfaces::srv::TriggerCapture>("captrig");
 }
 
 void CameraNode::config_node(bool managed = false) {
@@ -243,7 +243,7 @@ sensor_msgs::msg::Image::SharedPtr CameraNode::get_image(int trigger_type) {
     });
     
     //sleep 2 seconds
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     sensor_msgs::msg::Image::SharedPtr msg_image = nullptr;
     try{

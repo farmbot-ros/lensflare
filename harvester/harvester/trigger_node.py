@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
+from harvester_interfaces.srv import TriggerCamera
 from std_msgs.msg import Int16, Bool
 import time
 
@@ -9,6 +10,7 @@ class TriggerNode(Node):
     def __init__(self, camera_array, group, message, sequence_interval, inter_camera_delay):
         super().__init__(f'trigger_node_{str(group)}')
         self.trigger_pub_dict = {}
+        self.trigger_service_dict = {}
         self.flash_pub_dict = {}
         self.message = message
         self.camera_array = camera_array
@@ -17,18 +19,25 @@ class TriggerNode(Node):
         for camera in self.camera_array:
             self.trigger_pub_dict[camera] = self.create_publisher(Int16, f"trigger_{camera}", 10)
             self.flash_pub_dict[camera] = self.create_publisher(Bool, f"flash_{camera}",10)
+            self.trigger_service_dict[camera] = self.create_client(TriggerCamera, f"camtrig_{camera}")
 
 
     def timer_callback(self):
         for camera in self.camera_array:
-            # flash_msg = Bool()
+            print(f"triggering {camera}")
+            # flash_msg = Bool() 
             # flash_msg.data = True
             # self.flash_pub_dict[camera].publish(flash_msg)
             trigger_msg = Int16()
             trigger_msg.data = self.message
             time.sleep(0.01) # TODO: tweak this delay such that it fits capturing the image which lights
             self.trigger_pub_dict[camera].publish(trigger_msg)
-            print(f"triggering {camera}")
+            
+            if (self.trigger_service_dict[camera].wait_for_service(timeout_sec=1.0)):
+                request = TriggerCamera.Request()
+                request.type = self.message
+                self.trigger_service_dict[camera].call_async(request)
+            
             time.sleep(self.inter_camera_delay)
 
 
