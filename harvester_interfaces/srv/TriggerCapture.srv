@@ -1,0 +1,5 @@
+string camera_name
+int64 mac_address
+---
+bool success
+string message

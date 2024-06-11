@@ -14,46 +14,40 @@ import json
 import rclpy
 from rclpy.node import Node
 
-from harvester_interfaces.srv import TriggerFlash
+from harvester_interfaces.srv import TriggerCapture
 from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import Image
 from std_msgs.msg import Int16, Bool
 
 
 
-IP_LIGHT = {
-      0 : None,
-      1 : "192.168.2.251", # 7 RIGHT     70:B3:D5:DD:90:FD
-      3 : "192.168.2.252", # - CENTER    70:B3:D5:DD:90:EF
-      2 : "192.168.2.253", # 9 LEFT      70:B3:D5:DD:90:ED
-}
+right_FD = "192.168.2.251" # 70:B3:D5:DD:90:FD
+center_EF = "192.168.2.252" # 70:B3:D5:DD:90:EF
+left_ED = "192.168.2.253" # 70:B3:D5:DD:90:ED
 
 GAIN = 20
 EXP = 1.2
 
 BY_MAC = { 
-    ##  MAC             IP      CHANNEL NAME    EXP     GAIN
-    30853686642969: [IP_LIGHT[2],   7,   "9b",   521*EXP,  30],
-    30853686643065: [IP_LIGHT[2],   1,   "9a",   521*EXP,  30],
-    30853686646563: [IP_LIGHT[2],   2,   "9c",   521*EXP,  30],
-    30853686653149: [IP_LIGHT[2],   5,   "9d",   521*EXP,  30],
-    30853686643056: [IP_LIGHT[2],   6,   "9e",   521*EXP,  30],
-    30853686646554: [IP_LIGHT[1],   6,   "7a",   521*EXP,  30],
-    30853686652294: [IP_LIGHT[1],   1,   "7b",   521*EXP,  30],
-    30853686652294: [IP_LIGHT[2],   1,   "7b",   521*EXP,  30],
-    30853686445113: [IP_LIGHT[1],   5,   "7c",   521*EXP,  30],
-    30853686646528: [IP_LIGHT[1],   2,   "7d",   521*EXP,  30],
-    30853686653140: [IP_LIGHT[1],   3,   "7e",   521*EXP,  30],
-    30853686643187: [IP_LIGHT[2],   1,   "1",   2847*1.1,  20],
-    # 30853686643187: [IP_LIGHT[0],   0,   "1",   2847*1.1,  20],
-    30853686650340: [IP_LIGHT[3],   6,   "4",    528*2.8,  30],
-    30853686646397: [IP_LIGHT[3],   5,   "3",    810*2.8,  20],
-    30853686643161: [IP_LIGHT[3],   2,   "13",   805*3.8,  20],
-    30853686643152: [IP_LIGHT[3],   1,   "12",   460*3.8,  40],
-    30853686646406: [IP_LIGHT[3],   3,   "10",     867.0,  30],
-    30853686650497: [IP_LIGHT[3],   7,   "11a",    498.0,  15],
-    30853686650366: [IP_LIGHT[2],   1,   "11b",    498.0,  15],
-    # 30853686650366: [IP_LIGHT[3],   7,   "11b",    498.0,  15],
+    ##  MAC             IP     CHANNEL NAME    EXP     GAIN
+    30853686642969: [left_ED,     7,   "9b",   521*EXP,  30],
+    30853686643065: [left_ED,     1,   "9a",   521*EXP,  30],
+    30853686646563: [left_ED,     2,   "9c",   521*EXP,  30],
+    30853686653149: [left_ED,     5,   "9d",   521*EXP,  30],
+    30853686643056: [left_ED,     6,   "9e",   521*EXP,  30],
+    30853686646554: [right_FD,    6,   "7a",   521*EXP,  30],
+    30853686652294: [right_FD,    1,   "7b",   521*EXP,  30],
+    30853686445113: [right_FD,    5,   "7c",   521*EXP,  30],
+    30853686646528: [right_FD,    2,   "7d",   521*EXP,  30],
+    30853686653140: [right_FD,    3,   "7e",   521*EXP,  30],
+    30853686643187: [None,        0,   "1",   2847*1.1,  20],
+    30853686650340: [center_EF,   6,   "4",    528*2.8,  30],
+    30853686646397: [center_EF,   5,   "3",    810*2.8,  20],
+    30853686643161: [center_EF,   2,   "13",   805*3.8,  20],
+    30853686643152: [center_EF,   1,   "12",   460*3.8,  40],
+    30853686646406: [center_EF,   3,   "10",     867.0,  30],
+    30853686650497: [center_EF,   7,   "11a",    498.0,  15],
+    30853686650366: [center_EF,   7,   "11b",    498.0,  15],
 }
 
 class FlashNode(Node):
@@ -72,7 +66,7 @@ class FlashNode(Node):
             )
         
          # service
-        self.camera_service = self.create_service(TriggerFlash, f'flash_trigger', self.service_trigger)
+        self.camera_service = self.create_service(TriggerCapture, f'flash_trigger', self.service_trigger)
 
 
         
@@ -91,7 +85,7 @@ class FlashNode(Node):
         if mac in BY_MAC:
             ip, channel, name = BY_MAC[mac][:3]
             for i in range(6):
-                # self.pulse(ip, channel)
+                self.pulse(ip, channel)
                 print(f"fflashing {name}...")
                 time.sleep(0.3)
         else:

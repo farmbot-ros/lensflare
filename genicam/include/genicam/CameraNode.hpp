@@ -4,7 +4,7 @@
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <harvester_interfaces/srv/trigger_camera.hpp>
-#include <harvester_interfaces/srv/trigger_flash.hpp>
+#include <harvester_interfaces/srv/trigger_capture.hpp>
 #include <harvester_interfaces/srv/create_camera.hpp>
 #include <harvester_interfaces/msg/camera_device.hpp>
 #include <harvester_interfaces/msg/camera_device_array.hpp>
@@ -27,7 +27,7 @@ class CameraNode : public rclcpp_lifecycle::LifecycleNode {
         rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr inf_pub_;
         
         rclcpp::Service<harvester_interfaces::srv::TriggerCamera>::SharedPtr service;
-        rclcpp::Client<harvester_interfaces::srv::TriggerFlash>::SharedPtr flash_light;
+        rclcpp::Client<harvester_interfaces::srv::TriggerCapture>::SharedPtr captrig;
 
         std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
         std::shared_ptr<rclcpp::ParameterCallbackHandle> exposure = nullptr;

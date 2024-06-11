@@ -9,7 +9,7 @@
 
 #include <genicam/CameraNode.hpp>
 #include <harvester_interfaces/srv/trigger_camera.hpp>
-#include <harvester_interfaces/srv/trigger_flash.hpp>
+#include <harvester_interfaces/srv/trigger_capture.hpp>
 
 #include <ArenaApi.h>
 #include <GenICam.h>
@@ -104,7 +104,7 @@ void CameraNode::init_params() {
         this->declare_parameter("gain", 0.0);
         gain = param_subscriber_->add_parameter_callback("param_float", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
     }
-    flash_light = this->create_client<harvester_interfaces::srv::TriggerFlash>("flash_trigger");
+    captrig = this->create_client<harvester_interfaces::srv::TriggerCapture>("flash_trigger");
 }
 
 void CameraNode::config_node(bool managed = false) {
@@ -232,16 +232,19 @@ void CameraNode::load_settings_from_file() {
 
 
 sensor_msgs::msg::Image::SharedPtr CameraNode::get_image(int trigger_type) {
-    flash_light->wait_for_service(std::chrono::seconds(2));
-    flash_light->prune_pending_requests();
+    captrig->wait_for_service(std::chrono::seconds(2));
+    captrig->prune_pending_requests();
     
-    auto request = std::make_shared<harvester_interfaces::srv::TriggerFlash::Request>();
+    auto request = std::make_shared<harvester_interfaces::srv::TriggerCapture::Request>();
     request->mac_address = mac;
-    auto result = flash_light->async_send_request(request, [](rclcpp::Client<harvester_interfaces::srv::TriggerFlash>::SharedFuture future) {
+    auto result = captrig->async_send_request(request, [](rclcpp::Client<harvester_interfaces::srv::TriggerCapture>::SharedFuture future) {
         auto response = future.get();
         bool success = response->success;
     });
     
+    //sleep 2 seconds
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
     sensor_msgs::msg::Image::SharedPtr msg_image = nullptr;
     try{
         Arena::IImage* pImage = pDevice->GetImage(10000);

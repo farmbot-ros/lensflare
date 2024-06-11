@@ -12,9 +12,11 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CameraDevice.msg"
   "msg/CameraDeviceArray.msg"
+  "msg/TriggerCapture.msg"
   "srv/CreateCamera.srv"
   "srv/TriggerCamera.srv"
   "srv/TriggerFlash.srv"
+  "srv/TriggerCapture.srv"
 )
 
 ament_package()
