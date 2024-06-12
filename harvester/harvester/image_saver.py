@@ -41,7 +41,7 @@ class ImageSubscriber(Node):
 
 def main():
     rclpy.init()
-    base_folder = '/home/bresilla/images'
+    base_folder = '/mnt/data/'
     node = ImageSubscriber(base_folder)
     try:
         rclpy.spin(node)

@@ -55,7 +55,7 @@ def main(args=None):
     # 4 only inference
 
     executor = MultiThreadedExecutor(num_threads=2)
-    camera_group_1 = TriggerNode(inference_cameras, "inference", message=30, sequence_interval=5, inter_camera_delay=10)
+    camera_group_1 = TriggerNode(inference_cameras, "inference", message=30, sequence_interval=5, inter_camera_delay=2)
     camera_group_2 = TriggerNode(acquisition_cameras, "aquisition", message=10, sequence_interval=10, inter_camera_delay=10)
     try:
         executor.add_node(camera_group_1)
