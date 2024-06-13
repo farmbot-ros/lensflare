@@ -1,6 +1,6 @@
 from arena_api.system import system
 from arena_api.buffer import *
-from harvester_interfaces.msg import CameraDevice, CameraDeviceArray
+from genicam.msg import CameraDevice, CameraDeviceArray
 from rclpy.executors import MultiThreadedExecutor
 
 

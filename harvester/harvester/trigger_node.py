@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
-from harvester_interfaces.srv import TriggerCamera
+from genicam.srv import TriggerCamera
 from std_msgs.msg import Int16, Bool
 import time
 

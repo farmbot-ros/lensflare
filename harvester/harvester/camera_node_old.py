@@ -4,7 +4,6 @@ import ctypes
 import numpy as np
 from cv_bridge import CvBridge
 import time
-from harvester_interfaces.msg import CameraDevice, CameraDeviceArray
 from ament_index_python.packages import get_package_share_directory
 
 import socket

@@ -4,7 +4,6 @@ import rclpy
 from rclpy.node import Node
 from cv_bridge import CvBridge
 import cv2
-from rclpy.executors import MultiThreadedExecutor
 
 
 class ImageSubscriber(Node):
