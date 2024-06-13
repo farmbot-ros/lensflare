@@ -8,13 +8,19 @@
 #include <std_msgs/msg/int16.hpp>
 
 #include <genicam/CameraNode.hpp>
-#include <harvester_interfaces/srv/trigger_camera.hpp>
-#include <harvester_interfaces/srv/trigger_capture.hpp>
+#include <genicam/CameraSets.hpp>
+#include <genicam/srv/trigger_camera.hpp>
+#include <genicam/srv/trigger_capture.hpp>
 
 #include <ArenaApi.h>
 #include <GenICam.h>
 
 using lni = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface;
+
+inline uint64_t convert_mac(std::string mac) {
+    mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
+    return strtoul(mac.c_str(), NULL, 16);
+}
 
 CameraNode::CameraNode(Arena::IDevice* const pDevice, std::string camera_name, uint64_t mac_address, bool init = true) 
 : rclcpp_lifecycle::LifecycleNode("camera_" + camera_name) {
@@ -82,7 +88,7 @@ void CameraNode::add_system(Arena::ISystem* const pSystem, bool start_streaming 
         pSystem->UpdateDevices(1000);
         std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
         for (auto& deviceInfo : deviceInfos){
-            uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
+            uint64_t mac = convert_mac(deviceInfo.MacAddressStr().c_str());
             if (mac == this->mac) {
                 add_device(pSystem->CreateDevice(deviceInfo), start_streaming);
             }
@@ -104,7 +110,7 @@ void CameraNode::init_params() {
         this->declare_parameter("gain", 0.0);
         gain = param_subscriber_->add_parameter_callback("param_float", std::bind(&CameraNode::param_callback, this, std::placeholders::_1));
     }
-    captrig = this->create_client<harvester_interfaces::srv::TriggerCapture>("captrig");
+    captrig = this->create_client<genicam::srv::TriggerCapture>("captrig");
 }
 
 void CameraNode::config_node(bool managed = false) {
@@ -119,7 +125,7 @@ void CameraNode::config_node(bool managed = false) {
         view_pub_ = this->create_publisher<sensor_msgs::msg::Image>("view_" + name, 10);
         inf_pub_ = this->create_publisher<sensor_msgs::msg::Image>("inf_" + name, 10);
     }
-    service = this->create_service<harvester_interfaces::srv::TriggerCamera>(
+    service = this->create_service<genicam::srv::TriggerCamera>(
         "camtrig_" + name, std::bind(&CameraNode::service_trigger, this, 
         std::placeholders::_1, std::placeholders::_2));
 }
@@ -235,9 +241,9 @@ sensor_msgs::msg::Image::SharedPtr CameraNode::get_image(int trigger_type) {
     captrig->wait_for_service(std::chrono::seconds(2));
     captrig->prune_pending_requests();
     
-    auto request = std::make_shared<harvester_interfaces::srv::TriggerCapture::Request>();
+    auto request = std::make_shared<genicam::srv::TriggerCapture::Request>();
     request->mac_address = mac;
-    auto result = captrig->async_send_request(request, [](rclcpp::Client<harvester_interfaces::srv::TriggerCapture>::SharedFuture future) {
+    auto result = captrig->async_send_request(request, [](rclcpp::Client<genicam::srv::TriggerCapture>::SharedFuture future) {
         auto response = future.get();
         bool success = response->success;
     });
@@ -263,8 +269,8 @@ sensor_msgs::msg::Image::SharedPtr CameraNode::get_image(int trigger_type) {
 }
 
 void CameraNode::service_trigger(
-const std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Request> request, 
-std::shared_ptr<harvester_interfaces::srv::TriggerCamera::Response> response) {
+const std::shared_ptr<genicam::srv::TriggerCamera::Request> request, 
+std::shared_ptr<genicam::srv::TriggerCamera::Response> response) {
     RCLCPP_INFO(this->get_logger(), "Camera %s triggered with type %d", name.c_str(), request->type);
     if (this->lifecycled == true){
         if (this->get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
@@ -332,7 +338,7 @@ int main_unmanaged(int argc, char **argv) {
         std::vector<Arena::DeviceInfo> deviceInfos = pSystem->GetDevices();
         for (auto& deviceInfo : deviceInfos){
 			Arena::IDevice* pDevice;
-            uint64_t mac = camset::convert_mac(deviceInfo.MacAddressStr().c_str());
+            uint64_t mac = convert_mac(deviceInfo.MacAddressStr().c_str());
             if (camset::by_mac.find(mac) != camset::by_mac.end()) {
                 vDevices.push_back(std::make_pair(pDevice, mac));
             }

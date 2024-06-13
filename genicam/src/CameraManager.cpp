@@ -2,7 +2,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
-#include <harvester_interfaces/srv/trigger_camera.hpp>
+#include <genicam/srv/trigger_camera.hpp>
 #include <std_msgs/msg/int16.hpp>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -16,17 +16,22 @@
 
 using namespace std::chrono_literals;
 
+inline uint64_t convert_mac(std::string mac) {
+    mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
+    return strtoul(mac.c_str(), NULL, 16);
+}
+
 CameraManager::CameraManager() : Node("camera_manager") {
-    camera_info_sub = this->create_subscription<harvester_interfaces::msg::CameraDeviceArray>("/caminfo", 10, std::bind(&CameraManager::cam_info_update, this, std::placeholders::_1));
+    camera_info_sub = this->create_subscription<genicam::msg::CameraDeviceArray>("/caminfo", 10, std::bind(&CameraManager::cam_info_update, this, std::placeholders::_1));
     camera_check_timer = this->create_wall_timer(std::chrono::seconds(30), std::bind(&CameraManager::cam_check_update, this));
-    camera_get = this->create_client<harvester_interfaces::srv::CreateCamera>("caminfo");
+    camera_get = this->create_client<genicam::srv::CreateCamera>("caminfo");
 
     for (auto& cam : camset::by_mac) {
         auto cam_topic_name = "camera_" + cam.second.name;
         camera_get_state[cam_topic_name] = this->create_client<lifecycle_msgs::srv::GetState>(cam_topic_name + "/get_state");
         camera_change_state[cam_topic_name] = this->create_client<lifecycle_msgs::srv::ChangeState>(cam_topic_name + "/change_state");
 
-        auto device = harvester_interfaces::msg::CameraDevice();
+        auto device = genicam::msg::CameraDevice();
         device.id = cam.second.name;
         device.mac = std::to_string(cam.first);
         camera_devices.push_back(device);
@@ -37,7 +42,7 @@ CameraManager::~CameraManager() {
 }
 
 
-void CameraManager::cam_info_update(const harvester_interfaces::msg::CameraDeviceArray::SharedPtr msg) {
+void CameraManager::cam_info_update(const genicam::msg::CameraDeviceArray::SharedPtr msg) {
     camera_infos = msg;
     has_caminfos = true;
 }
@@ -51,9 +56,9 @@ void CameraManager::cam_check_update() {
         while (!camera_get->wait_for_service(std::chrono::seconds(2))) {
             RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Service not available, please launch CameraInfo node");
         }
-        auto request = std::make_shared<harvester_interfaces::srv::CreateCamera::Request>();
+        auto request = std::make_shared<genicam::srv::CreateCamera::Request>();
         request->camera_name = camera_node.id;
-        auto result = camera_get->async_send_request(request, [this, camera_node](rclcpp::Client<harvester_interfaces::srv::CreateCamera>::SharedFuture future) {
+        auto result = camera_get->async_send_request(request, [this, camera_node](rclcpp::Client<genicam::srv::CreateCamera>::SharedFuture future) {
             try {
                 auto response = future.get();
                 bool success = response->success;
@@ -83,7 +88,7 @@ void CameraManager::cam_check_update() {
 
 
 
-void CameraManager::state_controller(const harvester_interfaces::msg::CameraDevice camera, lifecycle_msgs::msg::State curr_state, bool running) {
+void CameraManager::state_controller(const genicam::msg::CameraDevice camera, lifecycle_msgs::msg::State curr_state, bool running) {
     // RCLCPP_INFO(this->get_logger(), "Camera %s is %s in current state %i", camera.id.c_str(), running ? "running" : "not running", curr_state.id);
     auto client_change = camera_change_state["camera_" + camera.id];
     auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
@@ -148,7 +153,7 @@ std::future_status CameraManager::wait_for_result(FutureT & future, WaitTimeT ti
   return status;
 }
 
-unsigned int CameraManager::get_state(harvester_interfaces::msg::CameraDevice camera_node, std::chrono::seconds timeout = 3s) {
+unsigned int CameraManager::get_state(genicam::msg::CameraDevice camera_node, std::chrono::seconds timeout = 3s) {
     auto client_get_state = camera_get_state["camera_" + camera_node.id];
     auto request = std::make_shared<lifecycle_msgs::srv::GetState::Request>();
 
@@ -176,7 +181,7 @@ unsigned int CameraManager::get_state(harvester_interfaces::msg::CameraDevice ca
     }
 }
 
-bool CameraManager::change_state(harvester_interfaces::msg::CameraDevice camera_node, std::uint8_t transition, std::chrono::seconds timeout = 3s){
+bool CameraManager::change_state(genicam::msg::CameraDevice camera_node, std::uint8_t transition, std::chrono::seconds timeout = 3s){
     auto client_change_state = camera_change_state["camera_" + camera_node.id];
     auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
     request->transition.id = transition;

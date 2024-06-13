@@ -6,13 +6,13 @@
         "limitSymbolsToIncludedHeaders": false
       },
       "includePath": [
+        "/home/bresilla/ROS_OXBO/install/genicam/include/**",
         "/home/bresilla/ROS_OXBO/install/visionplus/include/**",
-        "/home/bresilla/ROS_OXBO/install/harvester_interfaces/include/harvester_interfaces/**",
+        "/home/bresilla/ROS_OXBO/install/genicam/include/genicam/genicam/**",
         "/opt/ros/humble/include/**",
-        "/home/bresilla/ROS_OXBO/src/genicam/include/**",
         "/usr/include/**",
         "/opt/arena/include/**",
-        "/opt/arena/GenICam/library/CPP/include/**",
+        "/opt/arena/GenICam/library/CPP/include/**"
       ],
       "name": "ROS",
       "intelliSenseMode": "gcc-x64",

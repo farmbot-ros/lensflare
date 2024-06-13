@@ -18,15 +18,17 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
-include(FetchContent)
-FetchContent_Declare(rerun_sdk URL
-    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
-FetchContent_MakeAvailable(rerun_sdk)
+# include(FetchContent)
+# FetchContent_Declare(rerun_sdk URL
+#     https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
+# FetchContent_MakeAvailable(rerun_sdk)
 
 include_directories(
   include
+  ${rclcpp_INCLUDE_DIRS}
+  ${std_msgs_INCLUDE_DIRS}
 )
-
+  
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -39,7 +41,7 @@ find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(fmt REQUIRED)
-find_package(harvester_interfaces REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
 set(ros_dependencies
   rclcpp
@@ -50,27 +52,35 @@ set(ros_dependencies
   sensor_msgs
   cv_bridge
   image_transport
-  harvester_interfaces
   arena_sdk
   OpenCV
   fmt
 )
 
-add_executable(camera_info
-  src/CameraInfo.cpp
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/CameraDevice.msg"
+  "msg/CameraDeviceArray.msg"
+  "srv/CreateCamera.srv"
+  "srv/TriggerCamera.srv"
+  "msg/TriggerCapture.msg"
+  "srv/TriggerCapture.srv"
 )
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
+
+add_executable(camera_info src/CameraInfo.cpp)
 ament_target_dependencies(camera_info ${ros_dependencies})
+target_link_libraries(camera_info "${cpp_typesupport_target}")
 
-add_executable(camera_node
-  src/CameraNode.cpp
-)
+add_executable(camera_node src/CameraNode.cpp)
 ament_target_dependencies(camera_node ${ros_dependencies})
-# target_link_options(camera_node PRIVATE -Wl,-e,main_cn)
+target_link_libraries(camera_node "${cpp_typesupport_target}")
 
-add_executable(camera_manager
-  src/CameraManager.cpp
-)
+add_executable(camera_manager src/CameraManager.cpp)
 ament_target_dependencies(camera_manager ${ros_dependencies})
+target_link_libraries(camera_manager "${cpp_typesupport_target}")
+
 
 install(TARGETS
   camera_info
