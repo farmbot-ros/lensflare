@@ -422,6 +422,27 @@ int main_managed(int argc, char **argv) {
     return 0;
 }
 
+int named_camera(int argc, char **argv, std::string camera_name) {
+    rclcpp::init(argc, argv);
+    std::cout << "... LAUNCHING CAMERA " << camera_name << " ..." << std::endl;
+    Arena::ISystem* pSystem = nullptr;
+    rclcpp::executors::SingleThreadedExecutor executor;
+    try {
+        pSystem = Arena::OpenSystem();
+        auto camera_node = std::make_shared<CameraNode>(pSystem, camera_name, camset::by_name.at(camera_name));
+        executor.add_node(camera_node->get_node_base_interface());
+        executor.spin();
+    } catch(const std::exception& e) {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", e.what());
+    } catch (GenICam::GenericException& ge) {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
+    }
+
+    Arena::CloseSystem(pSystem);
+    rclcpp::shutdown();
+    return 0;
+}
+
 std::string parse_arguments(int argc, char * argv[], std::string custom_arg){
     auto return_string = "";
     for (int i = 1; i < argc; ++i){
@@ -444,8 +465,10 @@ int main(int argc, char **argv) {
             return main_managed(argc, argv);
         } else if (managed_str == "false") {
             return main_unmanaged(argc, argv);
+        } else if (managed_str != "") {
+            return named_camera(argc, argv, managed_str);
         } else {
-            std::cerr << "Invalid argument for managed flag\nuse --managed true or --managed false" << std::endl;
+            std::cerr << "Invalid argument for managed flag\nuse --managed true|false or --managed <cam_name>" << std::endl;
             return 0;
         }
     }
