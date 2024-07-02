@@ -19,8 +19,7 @@ AcquisitionMode	Continuous
 AcquisitionStartMode	Normal
 AcquisitionFrameCount	1
 AcquisitionBurstFrameCount	1
-AcquisitionFrameRate	3.99
-AcquisitionFrameRateEnable	1
+AcquisitionFrameRateEnable	0
 TriggerSelector	FrameStart
 TriggerSelector	AcquisitionStart
 TriggerMode	Off
@@ -91,9 +90,9 @@ ExposureAuto	Continuous
 ExposureAutoLimitAuto	Off
 ExposureAutoLowerLimit	47.208
 ExposureAutoUpperLimit	15006.1
-TargetBrightness	126
+TargetBrightness	85
 ExposureAutoAlgorithm	Mean
-ExposureAutoDamping	89.8
+ExposureAutoDamping	60.2
 EventSelector	ExposureStart
 PacketResendWindowFrameCount	4
 GevStreamChannelSelector	0
@@ -252,7 +251,7 @@ GainSelector	All
 GainAuto	Continuous
 GainSelector	All
 GainAutoLowerLimit	0
-GainAutoUpperLimit	8
+GainAutoUpperLimit	10
 BlackLevelSelector	All
 BlackLevelSelector	All
 BlackLevel	0
