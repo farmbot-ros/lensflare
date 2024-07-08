@@ -224,8 +224,8 @@ void CameraNode::load_settings_from_func() {
     GenApi::CIntegerPtr channle_size = pDevice->GetNodeMap()->GetNode("DeviceStreamChannelPacketSize");
     channle_size->SetValue(channle_size->GetMax());
     Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "PixelFormat", "BGR8");
-    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "ExposureAutoLimitAuto", "Off");
-    Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "GainAuto", "Continuous");
+    // Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "ExposureAutoLimitAuto", "Off");
+    // Arena::SetNodeValue<GenICam::gcstring>(pDevice->GetNodeMap(), "GainAuto", "Continuous");
 }
 
 void CameraNode::load_settings_from_file() {
@@ -233,7 +233,7 @@ void CameraNode::load_settings_from_file() {
     std::string settings_file = config_dir + name + ".txt";
     RCLCPP_INFO(this->get_logger(), "Reading from file: %s", settings_file.c_str());
     Arena::FeatureStream stream(pDevice->GetNodeMap());
-    stream.Write(settings_file.c_str());
+    stream.Read(settings_file.c_str());
 }
 
 

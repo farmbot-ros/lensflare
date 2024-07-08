@@ -5,7 +5,7 @@ import time
 import json
 import rclpy
 from rclpy.node import Node
-from harvester_interfaces.srv import TriggerCapture
+from genicam.srv import TriggerCapture
 from std_msgs.msg import Bool
 
 
@@ -36,7 +36,7 @@ BY_MAC = {
     30853686643152: [center_EF,   1,   "12",   460*3.8,  40],
     30853686646406: [center_EF,   3,   "10",     867.0,  30],
     30853686650497: [center_EF,   7,   "11a",    498.0,  15],
-    30853686650366: [center_EF,   7,   "11b",    498.0,  15],
+    30853686650366: [left_ED,     3,   "11b",    498.0,  15],
 }
 
 class FlashNode(Node):
@@ -55,7 +55,7 @@ class FlashNode(Node):
             )
         
          # service
-        self.camera_service = self.create_service(TriggerCapture, f'captrig', self.service_trigger)
+        self.camera_service = self.create_service(TriggerCapture, f'captrig', self.service_onoff)
 
 
         
@@ -73,10 +73,32 @@ class FlashNode(Node):
         mac = request.mac_address
         if mac in BY_MAC:
             ip, channel, name = BY_MAC[mac][:3]
+            if channel == 0:
+                response.success = False
+                response.message = "This light controller does not have a channel."
+                return response
+            print(f"Flashing {name}...")
             for i in range(6):
                 self.pulse(ip, channel)
-                print(f"fflashing {name}...")
-                time.sleep(0.3)
+                time.sleep(0.4)
+        else:
+            response.success = False
+            response.message = "No light controller found with this MAC address."
+        return response
+
+    def service_onoff(self, request, response):
+        response.success = True
+        mac = request.mac_address
+        if mac in BY_MAC:
+            ip, channel, name = BY_MAC[mac][:3]
+            if channel == 0:
+                response.success = False
+                response.message = "This light controller does not have a channel."
+                return response
+            print(f"Flashing {name}...")
+            self.duty(ip, channel, 250)
+            time.sleep(2)
+            self.duty(ip, channel, 0)
         else:
             response.success = False
             response.message = "No light controller found with this MAC address."
@@ -111,7 +133,7 @@ class FlashNode(Node):
 
     def pulse(self, udp_ip, port_nr):
         if not isinstance(port_nr, int) or port_nr < 1 or port_nr > 8:
-            raise ValueError("Port number must be an integer between 1 and 4.")
+            raise ValueError("Port number must be an integer between 1 and 8.")
         
         parameter_name = f"Send pulse port {port_nr}"
         return self.set_parameter_value(udp_ip, parameter_name, True)
