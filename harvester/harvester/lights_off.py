@@ -71,14 +71,18 @@ def main():
 
 
 def main2():
-    device = "192.168.2.252"
-    controller = ManimaApiCommunication(device, 6512, "/home/bresilla/lights_off.log")
-    print(controller.set_scene_duty(7, 250))
+    # while(True):
+    #     device = "192.168.2.252"
+    #     controller = ManimaApiCommunication(device, 6512, "/home/bresilla/lights_off.log")
+    #     print(controller.set_scene_duty(6, 255))
+    #     time.sleep(1)
+    #     print(controller.set_scene_duty(7, 0))
+    #     time.sleep(9)
 
-    device2 = "192.168.2.253"
-    controller2 = ManimaApiCommunication(device2, 6512, "/home/bresilla/lights_off.log")
-    print(controller.set_scene_duty(3, 0))
+    # device2 = "192.168.2.252"
+    # controller2 = ManimaApiCommunication(device2, 6512, "/home/bresilla/lights_off.log")
+    # print(controller2.set_scene_duty(6, 250))
 
 
 if __name__ == "__main__":
-    main()
+    main2()

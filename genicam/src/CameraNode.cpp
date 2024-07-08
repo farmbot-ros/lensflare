@@ -249,7 +249,9 @@ sensor_msgs::msg::Image::SharedPtr CameraNode::get_image(int trigger_type) {
     });
     
     //sleep 2 seconds
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    RCLCPP_INFO(this->get_logger(), "-- 1 --");
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    RCLCPP_INFO(this->get_logger(), "-- 2 --");
 
     sensor_msgs::msg::Image::SharedPtr msg_image = nullptr;
     try{
@@ -402,9 +404,9 @@ int main_managed(int argc, char **argv) {
             executor.add_node(camera_nodes.back()->get_node_base_interface());
         }
     } catch(const std::exception& e) {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", e.what());
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error (405): %s", e.what());
     } catch (GenICam::GenericException& ge) {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error (407): %s", ge.what());
     }
 
     try {
@@ -424,24 +426,63 @@ int main_managed(int argc, char **argv) {
 
 int named_camera(int argc, char **argv, std::string camera_name) {
     rclcpp::init(argc, argv);
-    std::cout << "... LAUNCHING CAMERA " << camera_name << " ..." << std::endl;
+    
     Arena::ISystem* pSystem = nullptr;
-    rclcpp::executors::SingleThreadedExecutor executor;
+    rclcpp::executors::MultiThreadedExecutor executor;
+    std::vector<std::shared_ptr<CameraNode>> camera_nodes;
     try {
         pSystem = Arena::OpenSystem();
-        auto camera_node = std::make_shared<CameraNode>(pSystem, camera_name, camset::by_name.at(camera_name));
-        executor.add_node(camera_node->get_node_base_interface());
-        executor.spin();
+        for (auto& cam : camset::by_mac) {
+            if (cam.second.name == camera_name){
+                camera_nodes.push_back(std::make_shared<CameraNode>(pSystem, cam.second.name, cam.first, false));
+                executor.add_node(camera_nodes.back()->get_node_base_interface());
+            }
+        }
     } catch(const std::exception& e) {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", e.what());
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error (405): %s", e.what());
     } catch (GenICam::GenericException& ge) {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error: %s", ge.what());
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error (407): %s", ge.what());
+    }
+
+    if(camera_nodes.empty()){
+        return 1;
+    }
+
+    try {
+        executor.spin();
+    } catch (const std::exception &e) {
+        std::cerr << "An error occurred: " << e.what() << std::endl;
+    }
+
+    for (auto& camera_node : camera_nodes) {
+        executor.remove_node(camera_node->get_node_base_interface());
     }
 
     Arena::CloseSystem(pSystem);
     rclcpp::shutdown();
     return 0;
 }
+
+// int named_camera(int argc, char **argv, std::string camera_name) {
+//     rclcpp::init(argc, argv);
+//     std::cout << "... LAUNCHING CAMERA " << camera_name << " ..." << std::endl;
+//     Arena::ISystem* pSystem = nullptr;
+//     rclcpp::executors::MultiThreadedExecutor executor;
+//     try {
+//         pSystem = Arena::OpenSystem();
+//         auto camera_node = std::make_shared<CameraNode>(pSystem, camera_name, camset::by_name.at(camera_name));
+//         executor.add_node(camera_node->get_node_base_interface());
+//         executor.spin();
+//     } catch(const std::exception& e) {
+//         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error (436): %s", e.what());
+//     } catch (GenICam::GenericException& ge) {
+//         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Error (438): %s", ge.what());
+//     }
+
+//     Arena::CloseSystem(pSystem);
+//     rclcpp::shutdown();
+//     return 0;
+// }
 
 std::string parse_arguments(int argc, char * argv[], std::string custom_arg){
     auto return_string = "";

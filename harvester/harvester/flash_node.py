@@ -8,6 +8,26 @@ from rclpy.node import Node
 from genicam.srv import TriggerCapture
 from std_msgs.msg import Bool
 
+import requests
+import json
+import threading
+
+def send_post_request():
+    url = "http://10.15.15.1:8000/trigger"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "procedures": [],
+        "arguments": {}
+    }
+    try:
+        requests.post(url, headers=headers, data=json.dumps(data))
+        print("Aletred VBTI-PC for the change")
+    except:
+        print("Coud not find route to VBTI-PC")
+        
+
 
 
 right_FD = "192.168.2.251" # 70:B3:D5:DD:90:FD
@@ -35,8 +55,8 @@ BY_MAC = {
     30853686643161: [center_EF,   2,   "13",   805*3.8,  20],
     30853686643152: [center_EF,   1,   "12",   460*3.8,  40],
     30853686646406: [center_EF,   3,   "10",     867.0,  30],
-    30853686650497: [center_EF,   7,   "11a",    498.0,  15],
-    30853686650366: [left_ED,     3,   "11b",    498.0,  15],
+    30853686650366: [center_EF,   7,   "11a",    498.0,  15],
+    30853686650497: [left_ED,     3,   "11b",    498.0,  15],
 }
 
 class FlashNode(Node):
@@ -55,7 +75,7 @@ class FlashNode(Node):
             )
         
          # service
-        self.camera_service = self.create_service(TriggerCapture, f'captrig', self.service_onoff)
+        self.camera_service = self.create_service(TriggerCapture, f'captrig', self.service_trigger)
 
 
         
@@ -73,14 +93,18 @@ class FlashNode(Node):
         mac = request.mac_address
         if mac in BY_MAC:
             ip, channel, name = BY_MAC[mac][:3]
+            if name == "11b" or name == "11a":
+                post_thread = threading.Thread(target=send_post_request)
+                post_thread.start()
+                # post_thread.detach()
             if channel == 0:
                 response.success = False
                 response.message = "This light controller does not have a channel."
                 return response
             print(f"Flashing {name}...")
-            for i in range(6):
+            for i in range(3):
                 self.pulse(ip, channel)
-                time.sleep(0.4)
+                time.sleep(0.3)
         else:
             response.success = False
             response.message = "No light controller found with this MAC address."
