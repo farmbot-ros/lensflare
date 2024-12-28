@@ -89,7 +89,7 @@ ShortExposureEnable	0
 ExposureAuto	Continuous
 ExposureAutoLimitAuto	Off
 ExposureAutoLowerLimit	20.584
-ExposureAutoUpperLimit	2000.26
+ExposureAutoUpperLimit	600.26
 TargetBrightness	128
 ExposureAutoAlgorithm	Mean
 ExposureAutoDamping	89.8
@@ -251,7 +251,7 @@ GainSelector	All
 GainAuto	Continuous
 GainSelector	All
 GainAutoLowerLimit	0
-GainAutoUpperLimit	10
+GainAutoUpperLimit	40
 BlackLevelSelector	All
 BlackLevelSelector	All
 BlackLevel	0

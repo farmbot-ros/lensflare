@@ -251,7 +251,7 @@ GainSelector	All
 GainAuto	Continuous
 GainSelector	All
 GainAutoLowerLimit	0
-GainAutoUpperLimit	10
+GainAutoUpperLimit	40
 BlackLevelSelector	All
 BlackLevelSelector	All
 BlackLevel	0
