@@ -27,6 +27,7 @@ install(
 )
 
 set(executables
+    main
 )
 
 find_package(ament_cmake REQUIRED)
@@ -80,6 +81,7 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 find_package(nlohmann_json REQUIRED)
+find_package(OpenCV REQUIRED)
 #find curl
 
 
@@ -88,6 +90,7 @@ set(dependencies_sys
     ${PCL_LIBRARIES}
     ${Eigen_LIBRARIES}
     ${ARAVIS_LIBRARIES}
+    ${OpenCV_LIBRARIES}
     nlohmann_json::nlohmann_json
 )
 
