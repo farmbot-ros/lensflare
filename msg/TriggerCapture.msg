@@ -1,2 +1,0 @@
-string camera_name
-int64 mac_address
