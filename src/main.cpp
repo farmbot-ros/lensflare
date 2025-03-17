@@ -1,6 +1,10 @@
 #include <arv.h>
 #include <iostream>
 
+#include <iostream>
+
+#include <GenApi/GenApi.h>
+
 int main() {
     // Refresh the list of devices
     arv_update_device_list();

@@ -5,7 +5,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 cmake_policy(SET CMP0074 NEW)
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+# set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/genicam" ${CMAKE_MODULE_PATH})
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -29,6 +29,15 @@ install(
 set(executables
     main
 )
+
+# set(GENICAM_INSTALL_LIBDIRS lib/genicam)
+# set(GENICAM_INSTALL_INCLUDEDIRS include/genicam)
+#
+add_subdirectory(genicam)
+# find_package(Genicam REQUIRED NO_CMAKE_PATH PATHS ${CMAKE_CURRENT_SOURCE_DIR}/genicam CONFIG NO_DEFAULT_PATH)
+# add_library(${PROJECT_NAMESPACE}::genicam ALIAS genicam)
+# include_directories(${Genicam_INCLUDES})
+# install(DIRECTORY genicam/library/CPP/include/ DESTINATION include/genicam)
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -91,6 +100,7 @@ set(dependencies_sys
     ${Eigen_LIBRARIES}
     ${ARAVIS_LIBRARIES}
     ${OpenCV_LIBRARIES}
+    genicam
     nlohmann_json::nlohmann_json
 )
 
